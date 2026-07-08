@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CATEGORIES } from '@/lib/categories'
 import TallyDot from '@/components/TallyDot'
-import { Loader2, Upload, Trash2, Pencil, Plus, LogOut } from 'lucide-react'
+import { Loader2, Upload, Trash2, Pencil, Plus, LogOut, Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Video } from 'lucide-react'
 
 const EMPTY_FORM = {
   title: '',
@@ -215,6 +215,60 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
 
+  const handleFormat = (before, after = '') => {
+    const textarea = document.getElementById('content-textarea')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = form.content
+    const selectedText = text.substring(start, end)
+    const replacement = before + selectedText + after
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end)
+    setForm((f) => ({ ...f, content: newContent }))
+
+    // Focus back and set selection
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
+    }, 0)
+  }
+
+  function handleAddVideo() {
+    const url = prompt('Masukkan URL video YouTube atau Vimeo:')
+    if (!url) return
+
+    // Parse YouTube
+    const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const ytMatch = url.match(ytReg)
+    const ytId = ytMatch && ytMatch[2].length === 11 ? ytMatch[2] : null
+
+    if (ytId) {
+      handleFormat(`\n\n<Youtube id="${ytId}" />\n`)
+      return
+    }
+
+    // Parse Vimeo
+    const vimReg = /(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/
+    const vimMatch = url.match(vimReg)
+    const vimId = vimMatch ? vimMatch[1] : null
+
+    if (vimId) {
+      handleFormat(`\n\n<Vimeo id="${vimId}" />\n`)
+      return
+    }
+
+    alert('URL tidak dikenali. Pastikan memasukkan URL YouTube atau Vimeo yang valid.')
+  }
+
+  function handleAddLink() {
+    const url = prompt('Masukkan URL Link:')
+    if (!url) return
+    handleFormat('[', `](${url})`)
+  }
+
+
   useEffect(() => {
     if (!initialSlug) return
     fetch(`/api/articles/${initialSlug}`)
@@ -366,26 +420,101 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-2">
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark">
             Isi artikel (Markdown)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-accent cursor-pointer hover:opacity-80">
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-1 border border-b-0 border-border-light dark:border-border-dark bg-surface-light/50 dark:bg-surface-dark/50 px-2 py-1.5 rounded-t-sm">
+          <button
+            type="button"
+            onClick={() => handleFormat('**', '**')}
+            title="Tebal (Bold)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <Bold size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFormat('*', '*')}
+            title="Miring (Italic)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <Italic size={15} />
+          </button>
+          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
+          <button
+            type="button"
+            onClick={() => handleFormat('## ')}
+            title="Judul 2 (Heading 2)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <Heading2 size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFormat('### ')}
+            title="Judul 3 (Heading 3)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <Heading3 size={15} />
+          </button>
+          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
+          <button
+            type="button"
+            onClick={() => handleFormat('- ')}
+            title="Daftar Poin (Bullet List)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <List size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFormat('1. ')}
+            title="Daftar Angka (Numbered List)"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <ListOrdered size={15} />
+          </button>
+          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
+          <button
+            type="button"
+            onClick={handleAddLink}
+            title="Sematkan Link"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <LinkIcon size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={handleAddVideo}
+            title="Sematkan Video YouTube/Vimeo"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
+          >
+            <Video size={15} />
+          </button>
+          <label
+            title="Upload Gambar"
+            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors cursor-pointer flex items-center justify-center"
+          >
             {uploading ? (
-              <Loader2 className="animate-spin" size={13} />
+              <Loader2 className="animate-spin" size={15} />
             ) : (
-              <Upload size={13} />
+              <Upload size={15} />
             )}
-            Upload gambar
             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
           </label>
         </div>
+
         <textarea
           required
+          id="content-textarea"
           value={form.content}
           onChange={(e) => update('content', e.target.value)}
-          rows={12}
-          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          rows={14}
+          className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={
             '## Gejala\nJelaskan gejala yang terlihat...\n\n## Penyebab\n...\n\n## Langkah Perbaikan\n1. ...\n2. ...'
           }
