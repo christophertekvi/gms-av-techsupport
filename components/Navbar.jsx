@@ -12,7 +12,7 @@ export default function Navbar() {
             <Radio size={14} className="text-white" />
           </span>
           <span className="font-display font-semibold text-[15px] hidden sm:inline">
-            AV Tech Church
+            GMS Church
           </span>
         </Link>
 
