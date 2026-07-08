@@ -18,6 +18,9 @@ export const metadata = {
   title: 'AV Tech Church — Dokumentasi & Troubleshooting',
   description:
     'Dokumentasi troubleshooting dan tutorial untuk tim multimedia & produksi AV gereja.',
+  icons: {
+    icon: '/icon.png',
+  },
 }
 
 export default function RootLayout({ children }) {
