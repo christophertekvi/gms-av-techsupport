@@ -15,9 +15,9 @@ const mono = IBM_Plex_Mono({
 })
 
 export const metadata = {
-  title: 'AV Tech Church — Dokumentasi & Troubleshooting',
+  title: 'GMS Church — Multimedia Technical Support',
   description:
-    'Dokumentasi troubleshooting dan tutorial untuk tim multimedia & produksi AV gereja.',
+    'Dokumentasi troubleshooting dan tutorial untuk tim multimedia.',
   icons: {
     icon: '/icon.png',
   },
@@ -45,7 +45,7 @@ export default function RootLayout({ children }) {
         {children}
         <footer className="border-t border-border-light dark:border-border-dark mt-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex items-center justify-between">
-            <span>GMS Church — Dokumentasi Internal Tim Multimedia</span>
+            <span>GMS Church — Technical Support</span>
             <span className="font-mono">v1.0</span>
           </div>
         </footer>
