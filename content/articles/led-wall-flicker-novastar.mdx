@@ -1,0 +1,40 @@
+---
+title: "LED wall flicker akibat HDMI sync drift (Novastar)"
+category: "display"
+severity: "warning"
+description: "Layar LED berkedip halus/berbayang meski sinyal input terlihat normal di sumber."
+tags: ["flicker", "genlock", "sync"]
+equipment: ["Novastar H5", "AJA GEN10"]
+updatedAt: "2026-05-11"
+---
+
+## Gejala
+
+LED wall menampilkan flicker halus (berkedip/bergaris tipis bergerak) yang
+lebih terlihat lewat kamera dibanding secara langsung, terutama saat merekam
+dengan shutter angle tertentu.
+
+## Penyebab
+
+Flicker seperti ini pada sistem controller seperti Novastar hampir selalu
+berasal dari **sync drift**: sumber sinyal dan controller tidak benar-benar
+terkunci ke clock yang sama, sehingga terjadi micro-drift antar frame.
+
+Perangkat sync generator yang tidak cukup kuat untuk resolusi tinggi (misal
+AJA GEN10 dipakai untuk sistem 4K50) bisa jadi akar masalahnya karena tidak
+mampu menghasilkan genlock yang stabil di frame rate tersebut.
+
+## Langkah Perbaikan
+
+1. Pastikan sync generator mendukung resolusi & frame rate yang dipakai
+   (untuk 2160p50 ke atas, butuh generator kelas 4K, bukan sekadar HD).
+2. Kunci semua sumber (kamera, switcher, controller LED) ke satu genlock
+   reference yang sama, jangan campur free-run dan genlocked.
+3. Cek kabel BNC untuk distribusi sync, hindari splitter pasif kualitas rendah.
+4. Setelah re-genlock, biarkan sistem stabil 1-2 menit sebelum menilai hasilnya.
+
+## Tips
+
+Kalau flicker hanya terlihat di rekaman kamera tapi tidak di mata langsung,
+itu petunjuk kuat bahwa ini masalah sync/genlock, bukan masalah kecerahan
+panel LED.

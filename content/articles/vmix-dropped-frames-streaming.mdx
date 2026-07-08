@@ -1,0 +1,40 @@
+---
+title: "vMix dropped frames saat live streaming"
+category: "streaming"
+severity: "warning"
+description: "Counter dropped frames naik terus di vMix meski koneksi internet terlihat stabil."
+tags: ["dropped-frames", "encoding", "bitrate"]
+equipment: ["vMix", "OBS"]
+updatedAt: "2026-04-02"
+---
+
+## Gejala
+
+Indikator dropped frames di vMix (atau OBS) terus bertambah selama live,
+menyebabkan gambar patah-patah di sisi penonton meski preview di operator
+terlihat mulus.
+
+## Penyebab Umum
+
+1. **Bitrate encoding lebih tinggi dari kapasitas upload** yang stabil.
+2. **CPU/GPU encoding overload** — terutama jika memakai banyak input,
+   overlay, atau multiview sekaligus.
+3. **Jaringan yang dipakai bersamaan** dengan device lain (misal Wi-Fi
+   jemaat) sehingga upload tidak stabil.
+
+## Langkah Perbaikan
+
+1. Turunkan bitrate ke sekitar 70-80% dari kecepatan upload maksimal yang
+   sudah diuji, bukan mepet 100%.
+2. Gunakan hardware encoder (NVENC/QuickSync) jika CPU sudah mendekati 100%
+   pemakaian saat live.
+3. Pisahkan jaringan untuk streaming dari jaringan umum/jemaat menggunakan
+   VLAN atau router terpisah.
+4. Uji koneksi dengan speed test upload beberapa kali di jam yang sama
+   dengan jadwal ibadah, bukan hanya sekali di pagi hari yang sepi.
+
+## Tips
+
+Selalu sisakan margin, jangan pernah set bitrate streaming mepet dengan
+hasil speed test maksimal — kondisi jaringan gereja bisa berubah saat
+jemaat mulai datang dan memakai Wi-Fi.

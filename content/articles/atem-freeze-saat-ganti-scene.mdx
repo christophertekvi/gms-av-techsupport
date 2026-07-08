@@ -1,0 +1,41 @@
+---
+title: "ATEM Mini/Constellation freeze saat ganti scene"
+category: "switcher"
+severity: "critical"
+description: "Switcher berhenti merespons atau gambar macet ketika transisi antar scene saat live."
+tags: ["freeze", "hdmi", "transisi"]
+equipment: ["ATEM Mini Pro", "ATEM Constellation"]
+updatedAt: "2026-06-20"
+---
+
+## Gejala
+
+Preview/Program di ATEM Software Control masih terlihat normal, tapi output ke
+program/streaming benar-benar berhenti (freeze) tepat saat transisi (cut/mix)
+dijalankan, terutama saat berpindah dari sumber kamera ke sumber PC/media player.
+
+## Kemungkinan Penyebab
+
+1. **Sinyal input tidak genlock** — salah satu sumber (biasanya PC/laptop) mengirim
+   sinyal dengan frame rate atau timing yang berbeda dari sumber lain.
+2. **Kabel HDMI/SDI yang marginal** — panjang kabel atau kualitas konektor yang
+   membuat sinyal drop sesaat saat switcher melakukan re-sync.
+3. **Firmware ATEM yang belum update**, terutama pada unit yang jarang di-update.
+
+## Langkah Perbaikan
+
+1. Cek di ATEM Software Control > Settings, pastikan semua input berjalan di
+   frame rate yang sama dengan format output switcher (misal semua 1080p50).
+2. Jika sumber PC, paksa output PC ke resolusi & refresh rate yang sama dengan
+   format program switcher sebelum event dimulai.
+3. Ganti kabel HDMI ke kabel yang lebih pendek atau kualitas lebih baik, atau
+   gunakan converter HDMI-SDI aktif untuk jarak jauh.
+4. Update firmware ATEM lewat Blackmagic Desktop Video sebelum hari-H, jangan
+   di hari produksi.
+5. Jika masih terjadi, coba isolasi dengan mematikan satu per satu input yang
+   dicurigai untuk mempersempit sumber masalah.
+
+## Pencegahan
+
+Selalu lakukan technical rehearsal minimal H-1 dengan semua sumber yang akan
+dipakai di hari-H, bukan hanya sebagian.

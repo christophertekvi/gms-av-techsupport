@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bg-light text-ink-light dark:bg-bg-dark dark:text-ink-dark font-body antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+::selection {
+  background-color: theme('colors.accent.DEFAULT');
+  color: white;
+}
+
+/* Focus ring visible for keyboard nav */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid theme('colors.accent.DEFAULT');
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prose styling for MDX article content */
+.prose-av {
+  @apply max-w-none;
+}
+.prose-av h2 {
+  @apply font-display text-xl font-semibold mt-8 mb-3 text-ink-light dark:text-ink-dark;
+}
+.prose-av h3 {
+  @apply font-display text-lg font-semibold mt-6 mb-2 text-ink-light dark:text-ink-dark;
+}
+.prose-av p {
+  @apply text-[15px] leading-7 mb-4 text-ink-light/90 dark:text-ink-dark/90;
+}
+.prose-av ul {
+  @apply list-disc pl-5 mb-4 space-y-1.5 text-[15px] leading-7;
+}
+.prose-av ol {
+  @apply list-decimal pl-5 mb-4 space-y-1.5 text-[15px] leading-7;
+}
+.prose-av code {
+  @apply font-mono text-[13px] bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded px-1.5 py-0.5;
+}
+.prose-av pre {
+  @apply font-mono text-[13px] bg-[#14181B] text-[#EAEDEE] rounded-md p-4 overflow-x-auto mb-4;
+}
+.prose-av pre code {
+  @apply bg-transparent border-none p-0;
+}
+.prose-av img {
+  @apply rounded-md border border-border-light dark:border-border-dark my-4;
+}
+.prose-av a {
+  @apply text-accent underline underline-offset-2;
+}
+.prose-av blockquote {
+  @apply border-l-2 border-accent pl-4 italic text-muted-light dark:text-muted-dark my-4;
+}
