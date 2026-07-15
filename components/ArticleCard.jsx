@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { getCategory } from '@/lib/categories'
-import { getWilayah } from '@/lib/categories'
+import { getLocation } from '@/lib/locations'
 
 export default function ArticleCard({ article }) {
   const category = getCategory(article.category)
-  const wilayah = article.wilayah ? getWilayah(article.wilayah) : null
+  const location = getLocation(article.location)
   return (
     <Link
       href={`/artikel/${article.slug}`}
@@ -14,9 +14,9 @@ export default function ArticleCard({ article }) {
         <span className="text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark">
           {category?.label || article.category}
         </span>
-        {wilayah && (
-          <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-accent-soft dark:bg-accent-softDark text-accent">
-            {wilayah.label}
+        {location && (
+          <span className="text-[11px] font-mono uppercase tracking-wide text-accent">
+            {location.label}
           </span>
         )}
       </div>

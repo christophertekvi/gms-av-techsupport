@@ -5,15 +5,41 @@ Dibangun dengan Next.js (App Router), React, dan Tailwind CSS.
 
 ## Fitur
 
-- **Kategori**: Camera, Switcher, Streaming, Audio, Display & LED, Network
+- **Kategori** (jenis alat/masalah): Camera, Switcher, Streaming, Audio, Display & LED, Network
+- **Ruangan** (lokasi fisik): Rooftop, PCM, MCC, GC — masing-masing punya halaman profil
+  berisi daftar alat, SOP buka/tutup, dan daftar artikel troubleshooting yang relevan
 - **Pencarian** cepat (client-side, fuzzy search) di seluruh artikel
-- **Tally Dot** — indikator tingkat keparahan artikel (Kritis / Perlu Perhatian / Tips),
-  meniru konvensi tally light broadcast (merah = program/on-air, hijau = preview/aman)
 - **Dark mode**
-- **Panel Admin** (`/admin`) — tim non-teknis bisa tambah/edit/hapus artikel lewat form,
-  lengkap dengan upload gambar, tanpa perlu tahu Git atau coding
+- **Panel Admin** (`/admin`) — tim non-teknis bisa tambah/edit/hapus artikel & ruangan
+  lewat form, lengkap dengan upload gambar, tanpa perlu tahu Git atau coding
 - Konten disimpan sebagai file Markdown (`.mdx`) di dalam repo — ringan, gratis, dan
   otomatis ter-backup lewat riwayat Git
+
+## Formula Kategori vs Ruangan
+
+Ada dua taksonomi independen, dan sengaja dipisah karena tujuannya beda:
+
+- **Kategori** menjawab "apa yang rusak" (switcher, kamera, audio, dst) — ini melekat
+  ke jenis alat, bukan ke lokasi. Artikel "ATEM freeze saat ganti scene" tetap relevan
+  mau switcher-nya ada di MCC atau di ruangan lain.
+- **Ruangan** menjawab "di mana" — dipakai untuk dua hal: (1) menandai artikel
+  troubleshooting yang memang spesifik ke ruangan tertentu (opsional, boleh dikosongkan
+  kalau masalahnya generik), dan (2) sebagai halaman **profil ruangan** yang isinya beda
+  dari artikel troubleshooting biasa.
+
+**Halaman profil ruangan** (`/ruangan/[slug]`, sumber di `content/rooms/*.mdx`) adalah
+tempat menaruh dokumentasi yang sifatnya tetap/referensi untuk satu ruangan:
+- Daftar inventaris alat di ruangan itu
+- SOP buka/tutup ruangan (checklist harian)
+- Tutorial cara pakai standar untuk ruangan tersebut
+- Otomatis menampilkan semua artikel troubleshooting yang di-tag ke ruangan itu
+
+Kenapa dipisah dari artikel biasa? Karena satu ruangan berisi banyak jenis alat
+sekaligus (kamera + switcher + audio, dst), jadi profil ruangan berfungsi sebagai
+"halaman hub" — bukan artikel troubleshooting satu masalah, tapi rangkuman semua hal
+yang perlu diketahui soal ruangan itu. Kalau nanti nambah ruangan baru (misal ada
+gedung baru), tinggal tambah satu room profile + mulai tag artikel-artikel yang
+relevan ke ruangan itu; tidak perlu duplikasi artikel troubleshooting yang sama.
 
 ## Cara Kerja "CMS Sederhana"-nya
 
@@ -78,21 +104,29 @@ Buka http://localhost:3000
 ```
 app/                 → halaman & API routes (App Router)
   page.js            → beranda
-  kategori/[slug]/   → halaman per kategori
+  kategori/[slug]/   → halaman per kategori (jenis alat)
+  ruangan/           → daftar & profil ruangan (SOP + alat + artikel terkait)
   artikel/[slug]/    → halaman detail artikel (render MDX)
-  admin/             → panel admin (form CRUD artikel)
-  api/                → route handler: articles, auth, upload
+  admin/             → panel admin (tab Artikel & Ruangan)
+  api/                → route handler: articles, rooms, auth, upload
 components/          → komponen UI (Navbar, Sidebar, ArticleCard, dst)
-content/articles/    → semua artikel dalam format .mdx
-lib/                 → helper: baca/tulis artikel, kategori, integrasi GitHub
+content/articles/    → semua artikel troubleshooting dalam format .mdx
+content/rooms/       → profil tiap ruangan (rooftop, pcm, mcc, gc) dalam format .mdx
+lib/                 → helper: baca/tulis artikel & ruangan, kategori, integrasi GitHub
 ```
 
-## Menambah Kategori Baru
+## Menambah Kategori atau Ruangan Baru
 
-Edit `lib/categories.js`, tambahkan objek baru ke array `CATEGORIES`:
+- Kategori baru: edit `lib/categories.js`, tambahkan objek baru ke array `CATEGORIES`.
+- Ruangan baru: edit `lib/locations.js`, tambahkan objek baru ke array `LOCATIONS`, lalu
+  buat file `content/rooms/slug-ruangan.mdx` (bisa lewat admin atau manual).
 
 ```js
+// lib/categories.js
 { slug: 'lighting', label: 'Lighting', description: 'Stage lighting & DMX' }
+
+// lib/locations.js
+{ slug: 'lobby', label: 'Lobby', description: 'Area registrasi & lobby utama' }
 ```
 
 ## Menulis Artikel Langsung Lewat Kode (opsional)
@@ -104,7 +138,7 @@ Selain lewat `/admin`, kamu juga bisa menambah file `.mdx` langsung di
 ---
 title: "Judul artikel"
 category: "switcher"
-severity: "warning"
+location: "mcc"
 description: "Ringkasan singkat"
 tags: ["tag1", "tag2"]
 equipment: ["Alat A", "Alat B"]
@@ -117,6 +151,9 @@ updatedAt: "2026-07-08"
 ## Langkah Perbaikan
 ...
 ```
+
+`location` bersifat opsional — kosongkan (hapus baris itu atau isi `null`) untuk
+artikel yang generik dan tidak spesifik ke satu ruangan.
 
 ## Keamanan
 

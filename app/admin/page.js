@@ -1,16 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CATEGORIES, WILAYAH } from '@/lib/categories'
-import { Loader2, Upload, Trash2, Pencil, Plus, LogOut, Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Video } from 'lucide-react'
+import { CATEGORIES } from '@/lib/categories'
+import { LOCATIONS } from '@/lib/locations'
+import { Loader2, Upload, Trash2, Pencil, Plus, LogOut } from 'lucide-react'
 
-const EMPTY_FORM = {
+const EMPTY_ARTICLE = {
   title: '',
   category: CATEGORIES[0].slug,
-  wilayah: '',
+  location: '',
   description: '',
   tags: '',
   equipment: '',
+  content: '',
+}
+
+const EMPTY_ROOM = {
+  name: '',
+  summary: '',
+  equipmentText: '',
   content: '',
 }
 
@@ -78,7 +86,7 @@ function LoginForm({ onSuccess }) {
           className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
           autoFocus
         />
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-tally-critical">{error}</p>}
         <button
           type="submit"
           disabled={loading}
@@ -93,22 +101,29 @@ function LoginForm({ onSuccess }) {
 }
 
 function AdminDashboard({ onLogout }) {
+  const [tab, setTab] = useState('articles') // articles | rooms
   const [articles, setArticles] = useState([])
+  const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingSlug, setEditingSlug] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   function refresh() {
     setLoading(true)
-    fetch('/api/articles')
-      .then((r) => r.json())
-      .then((d) => setArticles(d.articles || []))
+    Promise.all([
+      fetch('/api/articles').then((r) => r.json()),
+      fetch('/api/rooms').then((r) => r.json()),
+    ])
+      .then(([a, r]) => {
+        setArticles(a.articles || [])
+        setRooms(r.rooms || [])
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
 
-  async function handleDelete(slug) {
+  async function handleDeleteArticle(slug) {
     if (!confirm(`Hapus artikel "${slug}"? Tindakan ini akan commit ke GitHub.`)) return
     const res = await fetch(`/api/articles/${slug}`, { method: 'DELETE' })
     if (res.ok) refresh()
@@ -122,11 +137,11 @@ function AdminDashboard({ onLogout }) {
 
   return (
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-semibold">Panel Admin</h1>
           <p className="text-sm text-muted-light dark:text-muted-dark">
-            Kelola artikel dokumentasi. Publish akan commit ke GitHub &amp; auto-deploy.
+            Kelola artikel & ruangan. Publish akan commit ke GitHub &amp; auto-deploy.
           </p>
         </div>
         <button
@@ -137,31 +152,66 @@ function AdminDashboard({ onLogout }) {
         </button>
       </div>
 
+      <div className="flex gap-1 mb-6 border-b border-border-light dark:border-border-dark">
+        {['articles', 'rooms'].map((t) => (
+          <button
+            key={t}
+            onClick={() => {
+              setTab(t)
+              setShowForm(false)
+              setEditingSlug(null)
+            }}
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === t
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark'
+            }`}
+          >
+            {t === 'articles' ? 'Artikel' : 'Ruangan'}
+          </button>
+        ))}
+      </div>
+
       {showForm ? (
-        <ArticleForm
-          initialSlug={editingSlug}
-          onDone={() => {
-            setShowForm(false)
-            setEditingSlug(null)
-            refresh()
-          }}
-          onCancel={() => {
-            setShowForm(false)
-            setEditingSlug(null)
-          }}
-        />
+        tab === 'articles' ? (
+          <ArticleForm
+            initialSlug={editingSlug}
+            onDone={() => {
+              setShowForm(false)
+              setEditingSlug(null)
+              refresh()
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingSlug(null)
+            }}
+          />
+        ) : (
+          <RoomForm
+            initialSlug={editingSlug}
+            onDone={() => {
+              setShowForm(false)
+              setEditingSlug(null)
+              refresh()
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingSlug(null)
+            }}
+          />
+        )
       ) : (
         <>
           <button
             onClick={() => setShowForm(true)}
             className="mb-6 inline-flex items-center gap-1.5 rounded-sm bg-accent text-white text-sm font-medium px-3 py-2 hover:opacity-90"
           >
-            <Plus size={15} /> Artikel Baru
+            <Plus size={15} /> {tab === 'articles' ? 'Artikel Baru' : 'Ruangan Baru'}
           </button>
 
           {loading ? (
             <Loader2 className="animate-spin text-muted-light dark:text-muted-dark" size={18} />
-          ) : (
+          ) : tab === 'articles' ? (
             <div className="rounded-md border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark">
               {articles.length === 0 && (
                 <p className="p-6 text-sm text-muted-light dark:text-muted-dark">
@@ -170,13 +220,12 @@ function AdminDashboard({ onLogout }) {
               )}
               {articles.map((a) => (
                 <div key={a.slug} className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{a.title}</p>
-                      <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
-                        {a.category}{a.wilayah ? ` · ${a.wilayah}` : ''} · {a.slug}
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{a.title}</p>
+                    <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
+                      {a.category}
+                      {a.location ? ` · ${a.location}` : ''} · {a.slug}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <button
@@ -190,15 +239,41 @@ function AdminDashboard({ onLogout }) {
                       <Pencil size={15} />
                     </button>
                     <button
-                      onClick={() => handleDelete(a.slug)}
+                      onClick={() => handleDeleteArticle(a.slug)}
                       aria-label="Hapus"
-                      className="text-muted-light dark:text-muted-dark hover:text-red-500"
+                      className="text-muted-light dark:text-muted-dark hover:text-tally-critical"
                     >
                       <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark">
+              {LOCATIONS.map((loc) => {
+                const room = rooms.find((r) => r.slug === loc.slug)
+                return (
+                  <div key={loc.slug} className="flex items-center justify-between p-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{room?.name || loc.label}</p>
+                      <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
+                        {loc.slug} · {room?.relatedArticles?.length || 0} artikel terkait
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingSlug(loc.slug)
+                        setShowForm(true)
+                      }}
+                      aria-label="Edit"
+                      className="text-muted-light dark:text-muted-dark hover:text-accent"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
@@ -208,64 +283,10 @@ function AdminDashboard({ onLogout }) {
 }
 
 function ArticleForm({ initialSlug, onDone, onCancel }) {
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(EMPTY_ARTICLE)
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-
-  const handleFormat = (before, after = '') => {
-    const textarea = document.getElementById('content-textarea')
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = form.content
-    const selectedText = text.substring(start, end)
-    const replacement = before + selectedText + after
-
-    const newContent = text.substring(0, start) + replacement + text.substring(end)
-    setForm((f) => ({ ...f, content: newContent }))
-
-    // Focus back and set selection
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
-    }, 0)
-  }
-
-  function handleAddVideo() {
-    const url = prompt('Masukkan URL video YouTube atau Vimeo:')
-    if (!url) return
-
-    // Parse YouTube
-    const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\\&v=)([^#\\&\\?]*).*/
-    const ytMatch = url.match(ytReg)
-    const ytId = ytMatch && ytMatch[2].length === 11 ? ytMatch[2] : null
-
-    if (ytId) {
-      handleFormat(`\n\n<Youtube id="${ytId}" />\n`)
-      return
-    }
-
-    // Parse Vimeo
-    const vimReg = /(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/
-    const vimMatch = url.match(vimReg)
-    const vimId = vimMatch ? vimMatch[1] : null
-
-    if (vimId) {
-      handleFormat(`\n\n<Vimeo id="${vimId}" />\n`)
-      return
-    }
-
-    alert('URL tidak dikenali. Pastikan memasukkan URL YouTube atau Vimeo yang valid.')
-  }
-
-  function handleAddLink() {
-    const url = prompt('Masukkan URL Link:')
-    if (!url) return
-    handleFormat('[', `](${url})`)
-  }
-
 
   useEffect(() => {
     if (!initialSlug) return
@@ -275,7 +296,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         if (d.article) {
           setForm({
             ...d.article,
-            wilayah: d.article.wilayah || '',
+            location: d.article.location || '',
             tags: (d.article.tags || []).join(', '),
             equipment: (d.article.equipment || []).join(', '),
           })
@@ -322,7 +343,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, location: form.location || null }),
     })
     const data = await res.json()
     setLoading(false)
@@ -351,7 +372,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-            Kategori
+            Kategori (jenis alat/masalah)
           </label>
           <select
             value={form.category}
@@ -367,17 +388,17 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         </div>
         <div>
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-            Wilayah
+            Ruangan (opsional)
           </label>
           <select
-            value={form.wilayah}
-            onChange={(e) => update('wilayah', e.target.value)}
+            value={form.location}
+            onChange={(e) => update('location', e.target.value)}
             className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
           >
-            <option value="">— Tidak spesifik —</option>
-            {WILAYAH.map((w) => (
-              <option key={w.slug} value={w.slug}>
-                {w.label}
+            <option value="">— Umum, tidak spesifik ruangan —</option>
+            {LOCATIONS.map((l) => (
+              <option key={l.slug} value={l.slug}>
+                {l.label}
               </option>
             ))}
           </select>
@@ -422,108 +443,29 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark">
             Isi artikel (Markdown)
           </label>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-1 border border-b-0 border-border-light dark:border-border-dark bg-surface-light/50 dark:bg-surface-dark/50 px-2 py-1.5 rounded-t-sm">
-          <button
-            type="button"
-            onClick={() => handleFormat('**', '**')}
-            title="Tebal (Bold)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <Bold size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFormat('*', '*')}
-            title="Miring (Italic)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <Italic size={15} />
-          </button>
-          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
-          <button
-            type="button"
-            onClick={() => handleFormat('## ')}
-            title="Judul 2 (Heading 2)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <Heading2 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFormat('### ')}
-            title="Judul 3 (Heading 3)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <Heading3 size={15} />
-          </button>
-          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
-          <button
-            type="button"
-            onClick={() => handleFormat('- ')}
-            title="Daftar Poin (Bullet List)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <List size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFormat('1. ')}
-            title="Daftar Angka (Numbered List)"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <ListOrdered size={15} />
-          </button>
-          <div className="w-[1px] h-4 bg-border-light dark:bg-border-dark mx-1" />
-          <button
-            type="button"
-            onClick={handleAddLink}
-            title="Sematkan Link"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <LinkIcon size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={handleAddVideo}
-            title="Sematkan Video YouTube/Vimeo"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors"
-          >
-            <Video size={15} />
-          </button>
-          <label
-            title="Upload Gambar"
-            className="p-1.5 rounded hover:bg-border-light dark:hover:bg-border-dark text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark transition-colors cursor-pointer flex items-center justify-center"
-          >
-            {uploading ? (
-              <Loader2 className="animate-spin" size={15} />
-            ) : (
-              <Upload size={15} />
-            )}
+          <label className="flex items-center gap-1.5 text-xs text-accent cursor-pointer hover:opacity-80">
+            {uploading ? <Loader2 className="animate-spin" size={13} /> : <Upload size={13} />}
+            Upload gambar
             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
           </label>
         </div>
-
         <textarea
           required
-          id="content-textarea"
           value={form.content}
           onChange={(e) => update('content', e.target.value)}
-          rows={14}
-          className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          rows={12}
+          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={
             '## Gejala\nJelaskan gejala yang terlihat...\n\n## Penyebab\n...\n\n## Langkah Perbaikan\n1. ...\n2. ...'
           }
         />
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-tally-critical">{error}</p>}
 
       <div className="flex items-center gap-3 pt-2">
         <button
@@ -542,10 +484,156 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
           Batal
         </button>
       </div>
-      <p className="text-xs text-muted-light dark:text-muted-dark flex items-center gap-1">
+      <p className="text-xs text-muted-light dark:text-muted-dark">
         Publish akan langsung commit ke GitHub &amp; Vercel otomatis deploy ulang
         (biasanya 30–60 detik).
       </p>
+    </form>
+  )
+}
+
+function equipmentTextToArray(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, notes] = line.split('|').map((s) => s.trim())
+      return { name, notes: notes || '' }
+    })
+}
+
+function equipmentArrayToText(arr) {
+  return (arr || []).map((eq) => (eq.notes ? `${eq.name} | ${eq.notes}` : eq.name)).join('\n')
+}
+
+function RoomForm({ initialSlug, onDone, onCancel }) {
+  const [form, setForm] = useState(EMPTY_ROOM)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!initialSlug) return
+    fetch(`/api/rooms/${initialSlug}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.room) {
+          setForm({
+            name: d.room.name,
+            summary: d.room.summary,
+            equipmentText: equipmentArrayToText(d.room.equipment),
+            content: d.room.content,
+          })
+        }
+      })
+  }, [initialSlug])
+
+  function update(field, value) {
+    setForm((f) => ({ ...f, [field]: value }))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    const url = initialSlug ? `/api/rooms/${initialSlug}` : '/api/rooms'
+    const method = initialSlug ? 'PUT' : 'POST'
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name,
+        summary: form.summary,
+        equipment: equipmentTextToArray(form.equipmentText),
+        content: form.content,
+      }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) {
+      setError(data.error || 'Gagal menyimpan.')
+      return
+    }
+    onDone()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 mb-10">
+      <div>
+        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+          Nama Ruangan
+        </label>
+        <input
+          required
+          value={form.name}
+          onChange={(e) => update('name', e.target.value)}
+          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
+          placeholder="MCC (Master Control Center)"
+        />
+        {!initialSlug && (
+          <p className="text-xs text-muted-light dark:text-muted-dark mt-1">
+            Catatan: slug ruangan mengikuti nama file di <code>content/rooms/</code>. Untuk 4
+            ruangan awal (Rooftop, PCM, MCC, GC) gunakan menu edit dari daftar, bukan buat baru.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+          Ringkasan singkat
+        </label>
+        <input
+          value={form.summary}
+          onChange={(e) => update('summary', e.target.value)}
+          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+          Daftar alat — satu baris per alat, format: <code>Nama Alat | catatan</code> (catatan opsional)
+        </label>
+        <textarea
+          value={form.equipmentText}
+          onChange={(e) => update('equipmentText', e.target.value)}
+          rows={5}
+          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          placeholder={'ATEM Constellation 4K | Switcher utama\nvMix Workstation | Backup switcher'}
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+          Tutorial / SOP ruangan (Markdown)
+        </label>
+        <textarea
+          value={form.content}
+          onChange={(e) => update('content', e.target.value)}
+          rows={12}
+          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          placeholder={'## SOP Buka Ruangan\n1. ...\n\n## SOP Tutup Ruangan\n1. ...'}
+        />
+      </div>
+
+      {error && <p className="text-sm text-tally-critical">{error}</p>}
+
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-sm bg-accent text-white text-sm font-medium px-4 py-2 hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+        >
+          {loading && <Loader2 className="animate-spin" size={14} />}
+          {initialSlug ? 'Simpan Perubahan' : 'Publish Ruangan'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-sm text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
+        >
+          Batal
+        </button>
+      </div>
     </form>
   )
 }

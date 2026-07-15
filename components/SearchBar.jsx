@@ -20,7 +20,7 @@ export default function SearchBar() {
         setIndex(data.articles || [])
         setFuse(
           new Fuse(data.articles || [], {
-            keys: ['title', 'description', 'tags', 'equipment'],
+            keys: ['title', 'description', 'tags', 'equipment', 'category', 'location'],
             threshold: 0.35,
           })
         )
@@ -82,9 +82,6 @@ export default function SearchBar() {
                 }}
                 className="w-full text-left px-3 py-2.5 hover:bg-bg-light dark:hover:bg-bg-dark border-b border-border-light dark:border-border-dark last:border-0 flex items-center gap-2"
               >
-                <span className="text-[11px] font-mono uppercase text-muted-light dark:text-muted-dark shrink-0">
-                  {item.category}
-                </span>
                 <span className="text-sm truncate">{item.title}</span>
               </button>
             ))

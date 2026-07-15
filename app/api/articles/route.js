@@ -20,7 +20,7 @@ export async function POST(req) {
 
   try {
     const body = await req.json()
-    const { title, category, severity, description, tags, equipment, content, slug: customSlug } =
+    const { title, category, location, description, tags, equipment, content, slug: customSlug } =
       body
 
     if (!title || !category || !content) {
@@ -34,7 +34,7 @@ export async function POST(req) {
     const frontmatter = buildFrontmatter({
       title,
       category,
-      severity,
+      location: location || null,
       description,
       tags: typeof tags === 'string' ? tags.split(',').map((t) => t.trim()).filter(Boolean) : tags,
       equipment:

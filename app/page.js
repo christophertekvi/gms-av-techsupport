@@ -1,7 +1,7 @@
 import Sidebar from '@/components/Sidebar'
 import ArticleCard from '@/components/ArticleCard'
 import { getAllArticles } from '@/lib/articles'
-import { CATEGORIES, WILAYAH } from '@/lib/categories'
+import { CATEGORIES } from '@/lib/categories'
 import Link from 'next/link'
 
 export default function HomePage() {
@@ -11,13 +11,15 @@ export default function HomePage() {
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <section className="mb-10 max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-wide text-accent mb-2">
-          GMS Multimedia Documentation
+          Panduan internal tim multimedia
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-semibold leading-tight mb-3">
-          Troubleshooting &amp; tutorial multimedia, cari tahu semuanya disini.
+          Troubleshooting &amp; tutorial AV, tanpa harus telepon siapa-siapa.
         </h1>
         <p className="text-muted-light dark:text-muted-dark leading-7">
-          Kumpulan solusi untuk masalah multimedia yang sering muncul saat produksi live. Tutorial ruangan, peralatan, dan lain sebagainya. Cari berdasarkan gejala, alat, atau telusuri per kategori.
+          Kumpulan solusi untuk masalah kamera, switcher, streaming, audio, dan display
+          yang sering muncul saat produksi live. Cari berdasarkan gejala, alat, atau
+          telusuri per kategori di samping.
         </p>
       </section>
 
@@ -42,26 +44,6 @@ export default function HomePage() {
           )}
 
           <section className="mt-12">
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark mb-4">
-              Jelajahi per Wilayah
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {WILAYAH.map((w) => (
-                <Link
-                  key={w.slug}
-                  href={`/wilayah/${w.slug}`}
-                  className="rounded-md border border-border-light dark:border-border-dark p-4 hover:border-accent transition-colors"
-                >
-                  <p className="font-display font-semibold text-sm mb-1">{w.label}</p>
-                  <p className="text-xs text-muted-light dark:text-muted-dark leading-5">
-                    {w.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-8">
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark mb-4">
               Jelajahi per Kategori
             </h2>
