@@ -1,21 +1,17 @@
-import { Space_Grotesk, Inter, IBM_Plex_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import Navbar from '@/components/Navbar'
 import './globals.css'
 
-const display = Space_Grotesk({
+const display = Inter({
   subsets: ['latin'],
   variable: '--font-display',
   weight: ['500', '600', '700'],
 })
 const body = Inter({ subsets: ['latin'], variable: '--font-body' })
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500'],
-})
+const mono = Inter({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata = {
-  title: 'AV Tech Church — Dokumentasi & Troubleshooting',
+  title: 'GMS Multimedia — Dokumentasi & Troubleshooting',
   description:
     'Dokumentasi troubleshooting dan tutorial untuk tim multimedia & produksi AV gereja.',
 }
@@ -42,7 +38,7 @@ export default function RootLayout({ children }) {
         {children}
         <footer className="border-t border-border-light dark:border-border-dark mt-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex items-center justify-between">
-            <span>AV Tech Church — dokumentasi internal tim multimedia</span>
+            <span>GMS Multimedia — dokumentasi internal tim multimedia</span>
             <span className="font-mono">v1.0</span>
           </div>
         </footer>
