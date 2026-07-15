@@ -10,9 +10,6 @@ export default function HomePage() {
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <section className="mb-10 max-w-2xl">
-        <p className="font-mono text-xs uppercase tracking-wide text-accent mb-2">
-          GMS Multimedia
-        </p>
         <h1 className="font-display text-3xl sm:text-4xl font-semibold leading-tight mb-3">
           Troubleshooting &amp; tutorial peralatan Multimedia GMS.
         </h1>

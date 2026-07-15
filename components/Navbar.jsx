@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Radio, Settings } from 'lucide-react'
+import {ShieldCheck} from 'lucide-react'
 import SearchBar from './SearchBar'
 import ThemeToggle from './ThemeToggle'
 
@@ -13,13 +13,6 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <Link
-          href="/ruangan"
-          className="hidden sm:inline text-sm text-muted-light dark:text-muted-dark hover:text-accent shrink-0"
-        >
-          Ruangan
-        </Link>
-
         <div className="flex-1 flex justify-center">
           <SearchBar />
         </div>
@@ -30,7 +23,7 @@ export default function Navbar() {
             aria-label="Panel admin"
             className="h-8 w-8 flex items-center justify-center rounded-sm border border-border-light dark:border-border-dark hover:border-accent transition-colors"
           >
-            <Settings size={15} />
+            <ShieldCheck size={15} title='Panel admin' />
           </Link>
           <ThemeToggle />
         </div>
