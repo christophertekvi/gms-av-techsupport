@@ -1,9 +1,8 @@
 import Sidebar from '@/components/Sidebar'
-import TallyDot from '@/components/TallyDot'
 import CategoryBadge from '@/components/CategoryBadge'
 import MDXContent from '@/components/MDXContent'
 import { getAllSlugs, getArticleBySlug } from '@/lib/articles'
-import { SEVERITY_MAP } from '@/components/TallyDot'
+import { getWilayah } from '@/lib/categories'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -16,7 +15,7 @@ export function generateMetadata({ params }) {
   const article = getArticleBySlug(params.slug)
   if (!article) return {}
   return {
-    title: `${article.title} — AV Tech Church`,
+    title: `${article.title} — GMS Multimedia Docs`,
     description: article.description,
   }
 }
@@ -24,12 +23,12 @@ export function generateMetadata({ params }) {
 export default function ArticlePage({ params }) {
   const article = getArticleBySlug(params.slug)
   if (!article) notFound()
-  const severityMeta = SEVERITY_MAP[article.severity] || SEVERITY_MAP.tip
+  const wilayah = article.wilayah ? getWilayah(article.wilayah) : null
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeCategory={article.category} />
+        <Sidebar activeCategory={article.category} activeWilayah={article.wilayah} />
         <article className="flex-1 min-w-0 max-w-3xl">
           <Link
             href="/"
@@ -40,7 +39,14 @@ export default function ArticlePage({ params }) {
 
           <div className="flex items-center gap-3 mb-3">
             <CategoryBadge slug={article.category} />
-            <TallyDot severity={article.severity} showLabel />
+            {wilayah && (
+              <Link
+                href={`/wilayah/${article.wilayah}`}
+                className="inline-flex items-center rounded-sm border border-border-light dark:border-border-dark px-2 py-0.5 text-xs font-mono uppercase tracking-wide text-accent hover:border-accent transition-colors"
+              >
+                {wilayah.label}
+              </Link>
+            )}
           </div>
 
           <h1 className="font-display text-2xl sm:text-3xl font-semibold leading-tight mb-3">

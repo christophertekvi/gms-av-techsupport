@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CATEGORIES } from '@/lib/categories'
-import TallyDot from '@/components/TallyDot'
+import { CATEGORIES, WILAYAH } from '@/lib/categories'
 import { Loader2, Upload, Trash2, Pencil, Plus, LogOut, Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Video } from 'lucide-react'
 
 const EMPTY_FORM = {
   title: '',
   category: CATEGORIES[0].slug,
-  severity: 'tip',
+  wilayah: '',
   description: '',
   tags: '',
   equipment: '',
@@ -79,7 +78,7 @@ function LoginForm({ onSuccess }) {
           className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
           autoFocus
         />
-        {error && <p className="text-sm text-tally-critical">{error}</p>}
+        {error && <p className="text-sm text-red-500">{error}</p>}
         <button
           type="submit"
           disabled={loading}
@@ -172,11 +171,10 @@ function AdminDashboard({ onLogout }) {
               {articles.map((a) => (
                 <div key={a.slug} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <TallyDot severity={a.severity} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{a.title}</p>
                       <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
-                        {a.category} · {a.slug}
+                        {a.category}{a.wilayah ? ` · ${a.wilayah}` : ''} · {a.slug}
                       </p>
                     </div>
                   </div>
@@ -194,7 +192,7 @@ function AdminDashboard({ onLogout }) {
                     <button
                       onClick={() => handleDelete(a.slug)}
                       aria-label="Hapus"
-                      className="text-muted-light dark:text-muted-dark hover:text-tally-critical"
+                      className="text-muted-light dark:text-muted-dark hover:text-red-500"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -240,7 +238,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
     if (!url) return
 
     // Parse YouTube
-    const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\\&v=)([^#\\&\\?]*).*/
     const ytMatch = url.match(ytReg)
     const ytId = ytMatch && ytMatch[2].length === 11 ? ytMatch[2] : null
 
@@ -277,6 +275,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         if (d.article) {
           setForm({
             ...d.article,
+            wilayah: d.article.wilayah || '',
             tags: (d.article.tags || []).join(', '),
             equipment: (d.article.equipment || []).join(', '),
           })
@@ -368,16 +367,19 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         </div>
         <div>
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-            Tingkat / Tally
+            Wilayah
           </label>
           <select
-            value={form.severity}
-            onChange={(e) => update('severity', e.target.value)}
+            value={form.wilayah}
+            onChange={(e) => update('wilayah', e.target.value)}
             className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
           >
-            <option value="critical">Kritis (merah)</option>
-            <option value="warning">Perlu Perhatian (kuning)</option>
-            <option value="tip">Tips (hijau)</option>
+            <option value="">— Tidak spesifik —</option>
+            {WILAYAH.map((w) => (
+              <option key={w.slug} value={w.slug}>
+                {w.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -521,7 +523,7 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         />
       </div>
 
-      {error && <p className="text-sm text-tally-critical">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="flex items-center gap-3 pt-2">
         <button

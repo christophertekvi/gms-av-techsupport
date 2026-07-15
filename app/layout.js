@@ -2,6 +2,7 @@ import { Space_Grotesk, Inter, IBM_Plex_Mono } from 'next/font/google'
 import Navbar from '@/components/Navbar'
 import './globals.css'
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -45,6 +46,7 @@ export default function RootLayout({ children }) {
         <Navbar />
         {children}
         <Analytics />
+        <SpeedInsights />
         <footer className="border-t border-border-light dark:border-border-dark mt-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex items-center justify-between">
             <span>GMS Church — Technical Support</span>
