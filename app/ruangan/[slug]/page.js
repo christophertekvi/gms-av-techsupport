@@ -29,26 +29,6 @@ export default function RoomPage({ params }) {
             </p>
           )}
 
-          {room?.equipment?.length > 0 && (
-            <div className="mb-8">
-              <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark mb-3">
-                Daftar Alat
-              </h2>
-              <div className="rounded-md border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark">
-                {room.equipment.map((eq) => (
-                  <div key={eq.name} className="flex items-center justify-between px-4 py-2.5">
-                    <span className="text-sm font-medium">{eq.name}</span>
-                    {eq.notes && (
-                      <span className="text-xs text-muted-light dark:text-muted-dark">
-                        {eq.notes}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {room?.content && (
             <div className="mb-10 pb-8 border-b border-border-light dark:border-border-dark">
               <MDXContent source={room.content} />
