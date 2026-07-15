@@ -1,7 +1,7 @@
 import Sidebar from '@/components/Sidebar'
 import ArticleCard from '@/components/ArticleCard'
 import { getArticlesByWilayah } from '@/lib/articles'
-import { getWilayah, WILAYAH } from '@/lib/categories'
+import { getWilayah, WILAYAH } from '@/lib/wilayah'
 import { notFound } from 'next/navigation'
 
 export function generateStaticParams() {
