@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { CATEGORIES } from '@/lib/categories'
-import { LOCATIONS } from '@/lib/locations'
+import { WILAYAH } from '@/lib/locations'
 import { Loader2, Upload, Trash2, Pencil, Plus, LogOut } from 'lucide-react'
 
 const EMPTY_ARTICLE = {
@@ -17,6 +17,7 @@ const EMPTY_ARTICLE = {
 
 const EMPTY_ROOM = {
   name: '',
+  wilayah: '',
   summary: '',
   equipmentText: '',
   content: '',
@@ -100,6 +101,112 @@ function LoginForm({ onSuccess }) {
   )
 }
 
+function MarkdownToolbar({ textareaRef, value, onChange }) {
+  const insertFormatting = (before, after = '') => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+
+    const selectedText = text.substring(start, end)
+    const replacement = before + selectedText + after
+
+    const newValue = text.substring(0, start) + replacement + text.substring(end)
+    onChange(newValue)
+
+    // Reset cursor focus and selection
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(
+        start + before.length,
+        start + before.length + selectedText.length
+      )
+    }, 0)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-t-sm border-t border-x border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark">
+      <button
+        type="button"
+        title="Tebal (Bold)"
+        onClick={() => insertFormatting('**', '**')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs font-bold border border-border-light dark:border-border-dark"
+      >
+        B
+      </button>
+      <button
+        type="button"
+        title="Miring (Italic)"
+        onClick={() => insertFormatting('*', '*')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs italic border border-border-light dark:border-border-dark"
+      >
+        I
+      </button>
+      <div className="h-4 w-px bg-border-light dark:bg-border-dark mx-1" />
+      <button
+        type="button"
+        title="Heading 1"
+        onClick={() => insertFormatting('# ', '\n')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs font-mono border border-border-light dark:border-border-dark"
+      >
+        H1
+      </button>
+      <button
+        type="button"
+        title="Heading 2"
+        onClick={() => insertFormatting('## ', '\n')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs font-mono border border-border-light dark:border-border-dark"
+      >
+        H2
+      </button>
+      <button
+        type="button"
+        title="Heading 3"
+        onClick={() => insertFormatting('### ', '\n')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs font-mono border border-border-light dark:border-border-dark"
+      >
+        H3
+      </button>
+      <div className="h-4 w-px bg-border-light dark:bg-border-dark mx-1" />
+      <button
+        type="button"
+        title="Daftar Bulat (Bullet List)"
+        onClick={() => insertFormatting('- ', '\n')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs border border-border-light dark:border-border-dark"
+      >
+        • List
+      </button>
+      <button
+        type="button"
+        title="Daftar Nomor (Numbered List)"
+        onClick={() => insertFormatting('1. ', '\n')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs border border-border-light dark:border-border-dark"
+      >
+        1. List
+      </button>
+      <div className="h-4 w-px bg-border-light dark:bg-border-dark mx-1" />
+      <button
+        type="button"
+        title="Blok Kode (Code Block)"
+        onClick={() => insertFormatting('```\n', '\n```')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs font-mono border border-border-light dark:border-border-dark"
+      >
+        Code
+      </button>
+      <button
+        type="button"
+        title="Tautan (Link)"
+        onClick={() => insertFormatting('[', '](url)')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs text-accent font-medium border border-border-light dark:border-border-dark"
+      >
+        Link
+      </button>
+    </div>
+  )
+}
+
 function AdminDashboard({ onLogout }) {
   const [tab, setTab] = useState('articles') // articles | rooms
   const [articles, setArticles] = useState([])
@@ -130,6 +237,13 @@ function AdminDashboard({ onLogout }) {
     else alert('Gagal menghapus artikel.')
   }
 
+  async function handleDeleteRoom(slug) {
+    if (!confirm(`Hapus ruangan "${slug}"? Tindakan ini akan menghapus file tutorial MDX.`)) return
+    const res = await fetch(`/api/rooms/${slug}`, { method: 'DELETE' })
+    if (res.ok) refresh()
+    else alert('Gagal menghapus ruangan.')
+  }
+
   async function handleLogout() {
     await fetch('/api/auth', { method: 'DELETE' })
     onLogout()
@@ -141,7 +255,7 @@ function AdminDashboard({ onLogout }) {
         <div>
           <h1 className="font-display text-2xl font-semibold">Panel Admin</h1>
           <p className="text-sm text-muted-light dark:text-muted-dark">
-            Kelola artikel & ruangan. Publish akan commit ke GitHub &amp; auto-deploy.
+            Kelola artikel &amp; wilayah/ruangan. Publish akan commit ke GitHub &amp; auto-deploy.
           </p>
         </div>
         <button
@@ -175,6 +289,7 @@ function AdminDashboard({ onLogout }) {
       {showForm ? (
         tab === 'articles' ? (
           <ArticleForm
+            rooms={rooms}
             initialSlug={editingSlug}
             onDone={() => {
               setShowForm(false)
@@ -250,27 +365,53 @@ function AdminDashboard({ onLogout }) {
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark">
-              {LOCATIONS.map((loc) => {
-                const room = rooms.find((r) => r.slug === loc.slug)
+            <div className="space-y-6">
+              {WILAYAH.map((wil) => {
+                const wilRooms = rooms.filter((r) => r.wilayah === wil.slug)
                 return (
-                  <div key={loc.slug} className="flex items-center justify-between p-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{room?.name || loc.label}</p>
-                      <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
-                        {loc.slug} · {room?.relatedArticles?.length || 0} artikel terkait
-                      </p>
+                  <div key={wil.slug} className="border border-border-light dark:border-border-dark rounded-md overflow-hidden shadow-sm">
+                    <div className="bg-bg-light dark:bg-bg-dark px-4 py-2 border-b border-border-light dark:border-border-dark">
+                      <span className="font-display font-semibold text-xs uppercase tracking-wide text-muted-light dark:text-muted-dark">
+                        {wil.label}
+                      </span>
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingSlug(loc.slug)
-                        setShowForm(true)
-                      }}
-                      aria-label="Edit"
-                      className="text-muted-light dark:text-muted-dark hover:text-accent"
-                    >
-                      <Pencil size={15} />
-                    </button>
+                    <div className="divide-y divide-border-light dark:divide-border-dark bg-surface-light dark:bg-surface-dark">
+                      {wilRooms.length === 0 ? (
+                        <p className="p-4 text-xs text-muted-light dark:text-muted-dark italic">
+                          Belum ada ruangan di wilayah ini.
+                        </p>
+                      ) : (
+                        wilRooms.map((r) => (
+                          <div key={r.slug} className="flex items-center justify-between p-4">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{r.name}</p>
+                              <p className="text-xs text-muted-light dark:text-muted-dark font-mono">
+                                slug: {r.slug} · {r.relatedArticles?.length || 0} artikel terkait
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <button
+                                onClick={() => {
+                                  setEditingSlug(r.slug)
+                                  setShowForm(true)
+                                }}
+                                aria-label="Edit"
+                                className="text-muted-light dark:text-muted-dark hover:text-accent"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRoom(r.slug)}
+                                aria-label="Hapus"
+                                className="text-muted-light dark:text-muted-dark hover:text-tally-critical"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -282,11 +423,12 @@ function AdminDashboard({ onLogout }) {
   )
 }
 
-function ArticleForm({ initialSlug, onDone, onCancel }) {
+function ArticleForm({ rooms, initialSlug, onDone, onCancel }) {
   const [form, setForm] = useState(EMPTY_ARTICLE)
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (!initialSlug) return
@@ -388,19 +530,27 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
         </div>
         <div>
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-            Ruangan (opsional)
+            Wilayah / Ruangan (opsional)
           </label>
           <select
             value={form.location}
             onChange={(e) => update('location', e.target.value)}
             className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
           >
-            <option value="">— Umum, tidak spesifik ruangan —</option>
-            {LOCATIONS.map((l) => (
-              <option key={l.slug} value={l.slug}>
-                {l.label}
-              </option>
-            ))}
+            <option value="">— Umum, tidak spesifik ruangan/wilayah —</option>
+            {WILAYAH.map((wil) => {
+              const wilRooms = rooms.filter((r) => r.wilayah === wil.slug)
+              return (
+                <optgroup key={wil.slug} label={wil.label}>
+                  <option value={wil.slug}>{wil.label} (Umum)</option>
+                  {wilRooms.map((r) => (
+                    <option key={r.slug} value={r.slug}>
+                      {wil.label} - {r.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            })}
           </select>
         </div>
       </div>
@@ -453,12 +603,14 @@ function ArticleForm({ initialSlug, onDone, onCancel }) {
             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
           </label>
         </div>
+        <MarkdownToolbar textareaRef={textareaRef} value={form.content} onChange={(v) => update('content', v)} />
         <textarea
           required
+          ref={textareaRef}
           value={form.content}
           onChange={(e) => update('content', e.target.value)}
           rows={12}
-          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={
             '## Gejala\nJelaskan gejala yang terlihat...\n\n## Penyebab\n...\n\n## Langkah Perbaikan\n1. ...\n2. ...'
           }
@@ -511,15 +663,20 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
   const [form, setForm] = useState(EMPTY_ROOM)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const textareaRef = useRef(null)
 
   useEffect(() => {
-    if (!initialSlug) return
+    if (!initialSlug) {
+      setForm(EMPTY_ROOM)
+      return
+    }
     fetch(`/api/rooms/${initialSlug}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.room) {
           setForm({
             name: d.room.name,
+            wilayah: d.room.wilayah || '',
             summary: d.room.summary,
             equipmentText: equipmentArrayToText(d.room.equipment),
             content: d.room.content,
@@ -538,15 +695,20 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
     setError('')
     const url = initialSlug ? `/api/rooms/${initialSlug}` : '/api/rooms'
     const method = initialSlug ? 'PUT' : 'POST'
+    
+    // We send payload to backend
+    const payload = {
+      name: form.name,
+      wilayah: form.wilayah,
+      summary: form.summary,
+      equipment: equipmentTextToArray(form.equipmentText),
+      content: form.content,
+    }
+
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name,
-        summary: form.summary,
-        equipment: equipmentTextToArray(form.equipmentText),
-        content: form.content,
-      }),
+      body: JSON.stringify(payload),
     })
     const data = await res.json()
     setLoading(false)
@@ -559,23 +721,38 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mb-10">
-      <div>
-        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-          Nama Ruangan
-        </label>
-        <input
-          required
-          value={form.name}
-          onChange={(e) => update('name', e.target.value)}
-          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
-          placeholder="MCC (Master Control Center)"
-        />
-        {!initialSlug && (
-          <p className="text-xs text-muted-light dark:text-muted-dark mt-1">
-            Catatan: slug ruangan mengikuti nama file di <code>content/rooms/</code>. Untuk 4
-            ruangan awal (Rooftop, PCM, MCC, GC) gunakan menu edit dari daftar, bukan buat baru.
-          </p>
-        )}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+            Wilayah
+          </label>
+          <select
+            required
+            disabled={!!initialSlug}
+            value={form.wilayah}
+            onChange={(e) => update('wilayah', e.target.value)}
+            className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none disabled:opacity-60"
+          >
+            <option value="">— Pilih Wilayah —</option>
+            {WILAYAH.map((w) => (
+              <option key={w.slug} value={w.slug}>
+                {w.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+            Nama Ruangan
+          </label>
+          <input
+            required
+            value={form.name}
+            onChange={(e) => update('name', e.target.value)}
+            className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
+            placeholder="Contoh: EK 1, EK 2, Chappel"
+          />
+        </div>
       </div>
 
       <div>
@@ -586,6 +763,7 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
           value={form.summary}
           onChange={(e) => update('summary', e.target.value)}
           className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm outline-none"
+          placeholder="Ringkasan singkat tentang ruangan"
         />
       </div>
 
@@ -606,11 +784,13 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
         <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
           Tutorial / SOP ruangan (Markdown)
         </label>
+        <MarkdownToolbar textareaRef={textareaRef} value={form.content} onChange={(v) => update('content', v)} />
         <textarea
+          ref={textareaRef}
           value={form.content}
           onChange={(e) => update('content', e.target.value)}
           rows={12}
-          className="w-full rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
+          className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={'## SOP Buka Ruangan\n1. ...\n\n## SOP Tutup Ruangan\n1. ...'}
         />
       </div>

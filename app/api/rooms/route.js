@@ -20,15 +20,18 @@ export async function POST(req) {
   }
   try {
     const body = await req.json()
-    const { name, summary, equipment, content, slug: customSlug } = body
+    const { name, summary, equipment, content, wilayah, slug: customSlug } = body
     if (!name) {
       return NextResponse.json({ error: 'Nama ruangan wajib diisi.' }, { status: 400 })
     }
-    const slug = slugify(customSlug || name)
-    const frontmatter = buildRoomFrontmatter({ name, summary, equipment })
+    if (!wilayah) {
+      return NextResponse.json({ error: 'Wilayah wajib dipilih.' }, { status: 400 })
+    }
+    const slug = customSlug || `${wilayah}-${slugify(name)}`
+    const frontmatter = buildRoomFrontmatter({ name, summary, equipment, wilayah })
     const fileContent = stringifyRoom(frontmatter, content)
 
-    await commitFile(`content/rooms/${slug}.mdx`, fileContent, `docs: tambah ruangan "${name}"`)
+    await commitFile(`content/rooms/${slug}.mdx`, fileContent, `docs: tambah ruangan "${name}" di "${wilayah}"`)
 
     return NextResponse.json({ ok: true, slug })
   } catch (err) {
@@ -39,3 +42,4 @@ export async function POST(req) {
     )
   }
 }
+
