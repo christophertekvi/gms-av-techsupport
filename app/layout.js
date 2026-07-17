@@ -14,6 +14,9 @@ export const metadata = {
   title: 'GMS Multimedia — Dokumentasi & Troubleshooting',
   description:
     'Dokumentasi troubleshooting dan tutorial untuk tim multimedia & produksi AV gereja.',
+  icons: {
+    icon: '/icon.png',
+  },
 }
 
 export default function RootLayout({ children }) {
