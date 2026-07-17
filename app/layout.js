@@ -1,14 +1,14 @@
-import { Inter } from 'next/font/google'
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google'
 import Navbar from '@/components/Navbar'
 import './globals.css'
 
-const display = Inter({
+const display = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-display',
   weight: ['500', '600', '700'],
 })
 const body = Inter({ subsets: ['latin'], variable: '--font-body' })
-const mono = Inter({ subsets: ['latin'], variable: '--font-mono' })
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata = {
   title: 'GMS Multimedia — Dokumentasi & Troubleshooting',
