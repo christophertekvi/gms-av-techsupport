@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import {ShieldCheck} from 'lucide-react'
+import {UserRound} from 'lucide-react'
 import SearchBar from './SearchBar'
 import ThemeToggle from './ThemeToggle'
 
@@ -23,7 +23,7 @@ export default function Navbar() {
             aria-label="Panel admin"
             className="h-8 w-8 flex items-center justify-center rounded-sm border border-border-light dark:border-border-dark hover:border-accent transition-colors"
           >
-            <ShieldCheck size={15} title='Panel admin' />
+            <UserRound size={15} title='Panel admin' />
           </Link>
           <ThemeToggle />
         </div>
