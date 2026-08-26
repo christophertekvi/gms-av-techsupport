@@ -1,11 +1,16 @@
 import Sidebar from '@/components/Sidebar'
 import ArticleCard from '@/components/ArticleCard'
+import WilayahCard from '@/components/WilayahCard'
 import { getAllArticles } from '@/lib/articles'
 import { CATEGORIES } from '@/lib/categories'
+import { WILAYAH } from '@/lib/locations'
+import { getAllRooms } from '@/lib/rooms'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 
 export default function HomePage() {
   const articles = getAllArticles()
+  const rooms = getAllRooms()
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
@@ -21,25 +26,49 @@ export default function HomePage() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         <Sidebar />
-        <div className="flex-1 min-w-0">
-          {articles.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark">
-                  Semua Artikel ({articles.length})
-                </h2>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {articles.map((article) => (
-                  <ArticleCard key={article.slug} article={article} />
-                ))}
-              </div>
-            </>
-          )}
+        <div className="flex-1 min-w-0 space-y-12">
+          {/* Section: Pilih Wilayah */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark">
+                Pilih Wilayah
+              </h2>
+              <Link
+                href="/wilayah"
+                className="text-xs text-accent font-medium hover:underline inline-flex items-center gap-1"
+              >
+                Lihat semua wilayah <ArrowRight size={13} />
+              </Link>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {WILAYAH.map((loc) => (
+                <WilayahCard key={loc.slug} location={loc} rooms={rooms} />
+              ))}
+            </div>
+          </section>
 
-          <section className="mt-12">
+          {/* Section: Semua Artikel */}
+          <section>
+            {articles.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark">
+                    Semua Artikel ({articles.length})
+                  </h2>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {articles.map((article) => (
+                    <ArticleCard key={article.slug} article={article} />
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* Section: Jelajahi per Kategori */}
+          <section>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark mb-4">
               Jelajahi per Kategori
             </h2>
