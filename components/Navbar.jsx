@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import {UserRound} from 'lucide-react'
+import Image from 'next/image'
+import { UserRound } from 'lucide-react'
 import SearchBar from './SearchBar'
 import ThemeToggle from './ThemeToggle'
 
@@ -7,7 +8,15 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-border-light dark:border-border-dark bg-bg-light/90 dark:bg-bg-dark/90 backdrop-blur">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <Image
+            src="/icon.png"
+            alt="GMS Logo"
+            width={28}
+            height={28}
+            className="w-7 h-7 rounded-full object-contain group-hover:scale-105 transition-transform"
+            priority
+          />
           <span className="font-display font-semibold text-[15px] hidden sm:inline">
             GMS Multimedia
           </span>

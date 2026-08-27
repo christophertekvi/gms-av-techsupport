@@ -69,9 +69,6 @@ export default function WilayahCard({ location, rooms = [] }) {
         >
           Detail Wilayah <ChevronRight size={12} />
         </Link>
-        <p className="text-[10px] font-mono text-muted-light dark:text-muted-dark">
-          {articleCount} artikel troubleshooting
-        </p>
       </div>
     </div>
   )

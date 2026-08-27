@@ -13,7 +13,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 export const metadata = {
   title: 'GMS Multimedia — Dokumentasi & Troubleshooting',
   description:
-    'Dokumentasi troubleshooting dan tutorial untuk tim multimedia & produksi AV gereja.',
+    'Dokumentasi Troubleshooting dan Tutorial untuk Tim Multimedia & Produksi AV Gereja.',
   icons: {
     icon: '/icon.png',
   },
@@ -41,7 +41,7 @@ export default function RootLayout({ children }) {
         {children}
         <footer className="border-t border-border-light dark:border-border-dark mt-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex items-center justify-between">
-            <span>GMS Multimedia — dokumentasi internal tim multimedia</span>
+            <span>GMS Multimedia — Dokumentasi Internal Tim Multimedia</span>
             <span className="font-mono">v1.0</span>
           </div>
         </footer>
