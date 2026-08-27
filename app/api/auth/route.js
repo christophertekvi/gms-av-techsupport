@@ -15,7 +15,8 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Password salah.' }, { status: 401 })
   }
 
-  cookies().set('av_admin_session', password, {
+  const cookieStore = await cookies()
+  cookieStore.set('av_admin_session', password, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -27,11 +28,13 @@ export async function POST(req) {
 }
 
 export async function DELETE() {
-  cookies().delete('av_admin_session')
+  const cookieStore = await cookies()
+  cookieStore.delete('av_admin_session')
   return NextResponse.json({ ok: true })
 }
 
 export async function GET() {
-  const token = cookies().get('av_admin_session')?.value
+  const cookieStore = await cookies()
+  const token = cookieStore.get('av_admin_session')?.value
   return NextResponse.json({ authed: !!token && token === process.env.ADMIN_PASSWORD })
 }

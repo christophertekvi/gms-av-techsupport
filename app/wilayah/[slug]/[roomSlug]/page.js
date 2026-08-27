@@ -19,12 +19,13 @@ export function generateStaticParams() {
     })
 }
 
-export default function RoomDetailPage({ params }) {
-  const location = getLocation(params.slug)
+export default async function RoomDetailPage({ params }) {
+  const { slug, roomSlug } = await params
+  const location = getLocation(slug)
   if (!location) notFound()
 
   // Room slug in MDX is formatted as [wilayahSlug]-[roomSlug]
-  const fullSlug = `${params.slug}-${params.roomSlug}`
+  const fullSlug = `${slug}-${roomSlug}`
   const room = getRoomBySlug(fullSlug)
   if (!room) notFound()
 
@@ -34,7 +35,7 @@ export default function RoomDetailPage({ params }) {
         <Sidebar activeLocation={fullSlug} />
         <div className="flex-1 min-w-0 max-w-3xl">
           <Link
-            href={`/wilayah/${params.slug}`}
+            href={`/wilayah/${slug}`}
             className="inline-flex items-center gap-1.5 text-xs text-muted-light dark:text-muted-dark hover:text-accent mb-6"
           >
             <ArrowLeft size={13} /> Kembali ke {location.label}

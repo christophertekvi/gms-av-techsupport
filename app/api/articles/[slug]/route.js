@@ -3,22 +3,25 @@ import { cookies } from 'next/headers'
 import { getArticleBySlug, buildFrontmatter, stringifyArticle } from '@/lib/articles'
 import { commitFile, deleteFile } from '@/lib/github'
 
-function isAuthed() {
-  const token = cookies().get('av_admin_session')?.value
+async function isAuthed() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('av_admin_session')?.value
   return token === process.env.ADMIN_PASSWORD
 }
 
 export async function GET(_req, { params }) {
-  const article = getArticleBySlug(params.slug)
+  const { slug } = await params
+  const article = getArticleBySlug(slug)
   if (!article) return NextResponse.json({ error: 'Artikel tidak ditemukan' }, { status: 404 })
   return NextResponse.json({ article })
 }
 
 export async function PUT(req, { params }) {
-  if (!isAuthed()) {
+  if (!(await isAuthed())) {
     return NextResponse.json({ error: 'Tidak diizinkan. Silakan login dulu.' }, { status: 401 })
   }
   try {
+    const { slug } = await params
     const body = await req.json()
     const { title, category, location, description, tags, equipment, content } = body
 
@@ -36,7 +39,7 @@ export async function PUT(req, { params }) {
     const fileContent = stringifyArticle(frontmatter, content)
 
     await commitFile(
-      `content/articles/${params.slug}.mdx`,
+      `content/articles/${slug}.mdx`,
       fileContent,
       `docs: perbarui artikel "${title}"`
     )
@@ -52,11 +55,12 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
-  if (!isAuthed()) {
+  if (!(await isAuthed())) {
     return NextResponse.json({ error: 'Tidak diizinkan. Silakan login dulu.' }, { status: 401 })
   }
   try {
-    await deleteFile(`content/articles/${params.slug}.mdx`, `docs: hapus artikel "${params.slug}"`)
+    const { slug } = await params
+    await deleteFile(`content/articles/${slug}.mdx`, `docs: hapus artikel "${slug}"`)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

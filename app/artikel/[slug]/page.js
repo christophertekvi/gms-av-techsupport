@@ -11,8 +11,9 @@ export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }))
 }
 
-export function generateMetadata({ params }) {
-  const article = getArticleBySlug(params.slug)
+export async function generateMetadata({ params }) {
+  const { slug } = await params
+  const article = getArticleBySlug(slug)
   if (!article) return {}
   return {
     title: `${article.title} — AV Tech Church`,
@@ -20,8 +21,9 @@ export function generateMetadata({ params }) {
   }
 }
 
-export default function ArticlePage({ params }) {
-  const article = getArticleBySlug(params.slug)
+export default async function ArticlePage({ params }) {
+  const { slug } = await params
+  const article = getArticleBySlug(slug)
   if (!article) notFound()
 
   return (

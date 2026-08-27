@@ -8,10 +8,11 @@ export function generateStaticParams() {
   return CATEGORIES.map((c) => ({ slug: c.slug }))
 }
 
-export default function CategoryPage({ params }) {
-  const category = getCategory(params.slug)
+export default async function CategoryPage({ params }) {
+  const { slug } = await params
+  const category = getCategory(slug)
   if (!category) notFound()
-  const articles = getArticlesByCategory(params.slug)
+  const articles = getArticlesByCategory(slug)
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
@@ -24,7 +25,7 @@ export default function CategoryPage({ params }) {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeCategory={params.slug} />
+        <Sidebar activeCategory={slug} />
         <div className="flex-1 min-w-0">
           {articles.length === 0 ? (
             <div className="rounded-md border border-dashed border-border-light dark:border-border-dark p-10 text-center text-sm text-muted-light dark:text-muted-dark">

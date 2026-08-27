@@ -11,20 +11,21 @@ export function generateStaticParams() {
   return WILAYAH.map((w) => ({ slug: w.slug }))
 }
 
-export default function WilayahDetailPage({ params }) {
-  const location = getLocation(params.slug)
+export default async function WilayahDetailPage({ params }) {
+  const { slug } = await params
+  const location = getLocation(slug)
   if (!location || location.parentSlug) notFound()
 
-  const rooms = getAllRooms().filter((r) => r.wilayah === params.slug)
+  const rooms = getAllRooms().filter((r) => r.wilayah === slug)
   const articles = getAllArticles()
   const wilayahArticles = articles.filter(
-    (a) => a.location === params.slug || a.location?.startsWith(`${params.slug}-`)
+    (a) => a.location === slug || a.location?.startsWith(`${slug}-`)
   )
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeLocation={params.slug} />
+        <Sidebar activeLocation={slug} />
         <div className="flex-1 min-w-0 max-w-3xl">
           <Link
             href="/wilayah"
@@ -58,7 +59,7 @@ export default function WilayahDetailPage({ params }) {
                   return (
                     <Link
                       key={room.slug}
-                      href={`/wilayah/${params.slug}/${roomSlug}`}
+                      href={`/wilayah/${slug}/${roomSlug}`}
                       className="rounded-md border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-5 hover:border-accent transition-colors flex flex-col justify-between"
                     >
                       <div>

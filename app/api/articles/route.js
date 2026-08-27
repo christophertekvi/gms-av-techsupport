@@ -8,13 +8,14 @@ export async function GET() {
   return NextResponse.json({ articles })
 }
 
-function isAuthed() {
-  const token = cookies().get('av_admin_session')?.value
+async function isAuthed() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('av_admin_session')?.value
   return token === process.env.ADMIN_PASSWORD
 }
 
 export async function POST(req) {
-  if (!isAuthed()) {
+  if (!(await isAuthed())) {
     return NextResponse.json({ error: 'Tidak diizinkan. Silakan login dulu.' }, { status: 401 })
   }
 

@@ -11,15 +11,23 @@ export default function WilayahCard({ location, rooms = [] }) {
   return (
     <div className="rounded-md border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 flex flex-col justify-between hover:border-accent/50 transition-all duration-300 shadow-sm">
       <div>
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="p-2 rounded bg-accent-soft dark:bg-accent-softDark text-accent shrink-0">
-            <MapPin size={16} />
+        <Link
+          href={`/wilayah/${location.slug}`}
+          className="flex items-center justify-between mb-3 group/header"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded bg-accent-soft dark:bg-accent-softDark text-accent shrink-0 group-hover/header:bg-accent group-hover/header:text-white transition-colors">
+              <MapPin size={16} />
+            </div>
+            <div>
+              <h3 className="font-display text-base font-semibold leading-tight group-hover/header:text-accent transition-colors">
+                {location.label}
+              </h3>
+              <p className="text-xs text-muted-light dark:text-muted-dark font-mono mt-0.5">{location.description}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-display text-base font-semibold leading-tight">{location.label}</h3>
-            <p className="text-xs text-muted-light dark:text-muted-dark font-mono mt-0.5">{location.description}</p>
-          </div>
-        </div>
+          <ChevronRight size={16} className="text-muted-light dark:text-muted-dark group-hover/header:text-accent group-hover/header:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
 
         <div className="mt-4 pt-4 border-t border-border-light dark:border-border-dark space-y-2.5">
           <p className="text-xs font-mono uppercase tracking-wider text-muted-light dark:text-muted-dark mb-1">
