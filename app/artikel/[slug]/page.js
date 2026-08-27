@@ -3,6 +3,7 @@ import CategoryBadge from '@/components/CategoryBadge'
 import LocationBadge from '@/components/LocationBadge'
 import MDXContent from '@/components/MDXContent'
 import { getAllSlugs, getArticleBySlug } from '@/lib/articles'
+import { getAllRooms } from '@/lib/rooms'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -25,11 +26,12 @@ export default async function ArticlePage({ params }) {
   const { slug } = await params
   const article = getArticleBySlug(slug)
   if (!article) notFound()
+  const rooms = getAllRooms()
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeCategory={article.category} activeLocation={article.location} />
+        <Sidebar activeCategory={article.category} activeLocation={article.location} rooms={rooms} />
         <article className="flex-1 min-w-0 max-w-3xl">
           <Link
             href="/"

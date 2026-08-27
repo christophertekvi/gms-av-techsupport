@@ -16,7 +16,8 @@ export default async function WilayahDetailPage({ params }) {
   const location = getLocation(slug)
   if (!location || location.parentSlug) notFound()
 
-  const rooms = getAllRooms().filter((r) => r.wilayah === slug)
+  const allRooms = getAllRooms()
+  const rooms = allRooms.filter((r) => r.wilayah === slug)
   const articles = getAllArticles()
   const wilayahArticles = articles.filter(
     (a) => a.location === slug || a.location?.startsWith(`${slug}-`)
@@ -25,7 +26,7 @@ export default async function WilayahDetailPage({ params }) {
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeLocation={slug} />
+        <Sidebar activeLocation={slug} rooms={allRooms} />
         <div className="flex-1 min-w-0 max-w-3xl">
           <Link
             href="/wilayah"

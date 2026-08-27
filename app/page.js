@@ -25,7 +25,7 @@ export default function HomePage() {
       </section>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar />
+        <Sidebar rooms={rooms} />
         <div className="flex-1 min-w-0 space-y-12">
           {/* Section: Pilih Wilayah */}
           <section>

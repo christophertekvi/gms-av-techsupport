@@ -28,11 +28,12 @@ export default async function RoomDetailPage({ params }) {
   const fullSlug = `${slug}-${roomSlug}`
   const room = getRoomBySlug(fullSlug)
   if (!room) notFound()
+  const rooms = getAllRooms()
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar activeLocation={fullSlug} />
+        <Sidebar activeLocation={fullSlug} rooms={rooms} />
         <div className="flex-1 min-w-0 max-w-3xl">
           <Link
             href={`/wilayah/${slug}`}

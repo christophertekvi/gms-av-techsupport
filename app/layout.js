@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="id" suppressHydrationWarning className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -36,7 +36,7 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <Navbar />
         {children}
         <footer className="border-t border-border-light dark:border-border-dark mt-16">

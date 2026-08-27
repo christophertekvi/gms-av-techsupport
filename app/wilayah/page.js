@@ -19,7 +19,7 @@ export default function WilayahListPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar />
+        <Sidebar rooms={rooms} />
         <div className="flex-1 min-w-0 grid sm:grid-cols-2 gap-6">
           {WILAYAH.map((loc) => (
             <WilayahCard key={loc.slug} location={loc} rooms={rooms} />
