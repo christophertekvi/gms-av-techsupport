@@ -203,6 +203,14 @@ function MarkdownToolbar({ textareaRef, value, onChange }) {
       >
         Link
       </button>
+      <button
+        type="button"
+        title="Embed YouTube Video"
+        onClick={() => insertFormatting('<YouTube url="', '" />')}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs text-red-500 font-medium border border-border-light dark:border-border-dark"
+      >
+        ▶ YouTube
+      </button>
     </div>
   )
 }
