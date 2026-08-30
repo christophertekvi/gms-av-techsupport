@@ -28,10 +28,24 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
 
   useEffect(() => {
-    fetch('/api/auth')
-      .then((r) => r.json())
-      .then((d) => setAuthed(!!d.authed))
-      .finally(() => setChecking(false))
+    function checkAuth() {
+      fetch('/api/auth')
+        .then((r) => r.json())
+        .then((d) => setAuthed(!!d.authed))
+        .catch(() => setAuthed(false))
+        .finally(() => setChecking(false))
+    }
+
+    checkAuth()
+
+    // Cek session secara berkala (tiap 1 menit) & saat tab kembali aktif
+    const interval = setInterval(checkAuth, 60 * 1000)
+    window.addEventListener('focus', checkAuth)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', checkAuth)
+    }
   }, [])
 
   if (checking) {
