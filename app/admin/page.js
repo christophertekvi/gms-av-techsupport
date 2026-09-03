@@ -3,7 +3,18 @@
 import { useEffect, useState, useRef } from 'react'
 import { CATEGORIES } from '@/lib/categories'
 import { WILAYAH } from '@/lib/locations'
-import { Loader2, Upload, Trash2, Pencil, Plus, LogOut } from 'lucide-react'
+import {
+  Loader2,
+  Upload,
+  Trash2,
+  Pencil,
+  Plus,
+  LogOut,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  X,
+  Check,
+} from 'lucide-react'
 
 const EMPTY_ARTICLE = {
   title: '',
@@ -115,7 +126,514 @@ function LoginForm({ onSuccess }) {
   )
 }
 
-function MarkdownToolbar({ textareaRef, value, onChange }) {
+
+function formatBytes(bytes) {
+  if (!bytes && bytes !== 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function insertImageAtCursor(textareaRef, content, setContent, url, alt = '') {
+  const textarea = textareaRef?.current
+  const altText = alt.trim() || 'Gambar'
+  const imageMarkdown = `![${altText}](${url})`
+
+  if (!textarea) {
+    const newContent = content ? `${content}\n\n${imageMarkdown}\n` : `${imageMarkdown}\n`
+    setContent(newContent)
+    return
+  }
+
+  const start = textarea.selectionStart ?? textarea.value.length
+  const end = textarea.selectionEnd ?? textarea.value.length
+  const text = textarea.value
+
+  const before = text.substring(0, start)
+  const after = text.substring(end)
+
+  const needsLeadingNewline = before.length > 0 && !before.endsWith('\n\n')
+  const leading = needsLeadingNewline ? (before.endsWith('\n') ? '\n' : '\n\n') : ''
+  const needsTrailingNewline = after.length > 0 && !after.startsWith('\n\n')
+  const trailing = needsTrailingNewline ? (after.startsWith('\n') ? '\n' : '\n\n') : '\n'
+
+  const insertedText = `${leading}${imageMarkdown}${trailing}`
+  const newContent = before + insertedText + after
+  setContent(newContent)
+
+  setTimeout(() => {
+    textarea.focus()
+    const newCursorPos = start + insertedText.length
+    textarea.setSelectionRange(newCursorPos, newCursorPos)
+  }, 40)
+}
+
+function ImageModal({ isOpen, onClose, onInsert }) {
+  const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'url' | 'library'
+
+  // Upload state
+  const [file, setFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [uploadAlt, setUploadAlt] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef(null)
+
+  // URL state
+  const [inputUrl, setInputUrl] = useState('')
+  const [urlAlt, setUrlAlt] = useState('')
+  const [urlError, setUrlError] = useState('')
+  const [urlImgError, setUrlImgError] = useState(false)
+
+  // Library state
+  const [libraryFiles, setLibraryFiles] = useState([])
+  const [loadingLibrary, setLoadingLibrary] = useState(false)
+  const [selectedLibraryUrl, setSelectedLibraryUrl] = useState('')
+  const [libraryAlt, setLibraryAlt] = useState('')
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'library') {
+      loadLibrary()
+    }
+  }, [isOpen, activeTab])
+
+  function loadLibrary() {
+    setLoadingLibrary(true)
+    fetch('/api/upload')
+      .then((r) => r.json())
+      .then((d) => {
+        setLibraryFiles(d.files || [])
+      })
+      .catch(() => setLibraryFiles([]))
+      .finally(() => setLoadingLibrary(false))
+  }
+
+  function handleFileSelection(selectedFile) {
+    if (!selectedFile) return
+    if (!selectedFile.type.startsWith('image/')) {
+      setUploadError('Hanya file gambar yang diperbolehkan (PNG, JPG, WEBP, GIF, dll).')
+      return
+    }
+    setUploadError('')
+    setFile(selectedFile)
+    const blobUrl = URL.createObjectURL(selectedFile)
+    setPreviewUrl(blobUrl)
+    if (!uploadAlt) {
+      const cleanName = selectedFile.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+      setUploadAlt(cleanName)
+    }
+  }
+
+  async function handleUploadSubmit(e) {
+    e.preventDefault()
+    if (!file) {
+      setUploadError('Pilih file gambar terlebih dahulu.')
+      return
+    }
+    setUploading(true)
+    setUploadError('')
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        const base64 = reader.result.split(',')[1]
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, base64 }),
+        })
+        const data = await res.json()
+        setUploading(false)
+        if (res.ok) {
+          onInsert(data.url, uploadAlt || file.name.replace(/\.[^/.]+$/, ''))
+          handleClose()
+        } else {
+          setUploadError(data.error || 'Gagal mengunggah gambar.')
+        }
+      } catch (err) {
+        setUploading(false)
+        setUploadError(err.message || 'Terjadi kesalahan saat upload.')
+      }
+    }
+    reader.onerror = () => {
+      setUploading(false)
+      setUploadError('Gagal membaca file dari komputer.')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleUrlSubmit(e) {
+    e.preventDefault()
+    if (!inputUrl.trim()) {
+      setUrlError('URL gambar wajib diisi.')
+      return
+    }
+    onInsert(inputUrl.trim(), urlAlt.trim() || 'Gambar')
+    handleClose()
+  }
+
+  function handleLibrarySubmit(e) {
+    e.preventDefault()
+    if (!selectedLibraryUrl) return
+    onInsert(selectedLibraryUrl, libraryAlt.trim() || 'Gambar')
+    handleClose()
+  }
+
+  function handleClose() {
+    setFile(null)
+    setPreviewUrl('')
+    setUploadAlt('')
+    setUploadError('')
+    setInputUrl('')
+    setUrlAlt('')
+    setUrlError('')
+    setUrlImgError(false)
+    setSelectedLibraryUrl('')
+    setLibraryAlt('')
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div
+        className="w-full max-w-lg rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light dark:border-border-dark">
+          <div>
+            <h2 className="font-display font-semibold text-base">Sematkan Gambar</h2>
+            <p className="text-xs text-muted-light dark:text-muted-dark">
+              Tambahkan gambar ke dalam panduan tutorial
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Tutup"
+            className="p-1 rounded-sm text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark hover:bg-bg-light dark:hover:bg-bg-dark"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="flex border-b border-border-light dark:border-border-dark bg-bg-light/60 dark:bg-bg-dark/60 px-4 pt-2 gap-2 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab('upload')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition-colors ${
+              activeTab === 'upload'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark'
+            }`}
+          >
+            <Upload size={13} />
+            Upload File
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('url')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition-colors ${
+              activeTab === 'url'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark'
+            }`}
+          >
+            <LinkIcon size={13} />
+            Tautan / URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('library')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition-colors ${
+              activeTab === 'library'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark'
+            }`}
+          >
+            <ImageIcon size={13} />
+            Pustaka Media
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 overflow-y-auto flex-1">
+          {activeTab === 'upload' && (
+            <form onSubmit={handleUploadSubmit} className="space-y-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileSelection(e.target.files?.[0])}
+              />
+
+              {!file ? (
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleFileSelection(e.dataTransfer.files?.[0])
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border-light dark:border-border-dark rounded-md p-6 text-center cursor-pointer hover:border-accent/80 hover:bg-bg-light/40 dark:hover:bg-bg-dark/40 transition-colors"
+                >
+                  <div className="mx-auto w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-2">
+                    <Upload size={18} />
+                  </div>
+                  <p className="text-sm font-medium">Klik untuk pilih gambar atau tarik ke sini</p>
+                  <p className="text-xs text-muted-light dark:text-muted-dark mt-1">
+                    Mendukung PNG, JPG, JPEG, WEBP, GIF
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative rounded-md border border-border-light dark:border-border-dark overflow-hidden bg-bg-light dark:bg-bg-dark p-2 flex items-center gap-3">
+                    {previewUrl && (
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-16 h-16 object-cover rounded border border-border-light dark:border-border-dark shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{file.name}</p>
+                      <p className="text-[11px] text-muted-light dark:text-muted-dark">
+                        {formatBytes(file.size)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs text-accent hover:underline shrink-0 px-2 py-1"
+                    >
+                      Ganti
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+                  Keterangan Gambar / Teks Alternatif (Alt)
+                </label>
+                <input
+                  value={uploadAlt}
+                  onChange={(e) => setUploadAlt(e.target.value)}
+                  placeholder="Contoh: Skema perkabelan ATEM switcher"
+                  className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none"
+                />
+                <p className="text-[11px] text-muted-light dark:text-muted-dark mt-1">
+                  Membantu pembaca memahami konteks gambar.
+                </p>
+              </div>
+
+              {uploadError && <p className="text-xs text-tally-critical">{uploadError}</p>}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-light dark:border-border-dark">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-3 py-1.5 text-xs text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading || !file}
+                  className="rounded-sm bg-accent text-white text-xs font-medium px-4 py-2 hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={13} />
+                      Mengunggah...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      Upload &amp; Sematkan
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 'url' && (
+            <form onSubmit={handleUrlSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+                  URL / Tautan Gambar
+                </label>
+                <input
+                  required
+                  value={inputUrl}
+                  onChange={(e) => {
+                    setInputUrl(e.target.value)
+                    setUrlError('')
+                    setUrlImgError(false)
+                  }}
+                  placeholder="https://contoh.com/gambar.jpg atau /uploads/gambar.jpg"
+                  className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none font-mono"
+                />
+              </div>
+
+              {inputUrl.trim() && (
+                <div className="rounded-md border border-border-light dark:border-border-dark p-2 bg-bg-light dark:bg-bg-dark text-center">
+                  <p className="text-[11px] text-muted-light dark:text-muted-dark mb-2 text-left font-mono">
+                    Pratinjau:
+                  </p>
+                  <img
+                    src={inputUrl.trim()}
+                    alt="Pratinjau URL"
+                    onError={() => setUrlImgError(true)}
+                    className="max-h-48 mx-auto rounded border border-border-light dark:border-border-dark object-contain"
+                  />
+                  {urlImgError && (
+                    <p className="text-xs text-tally-critical mt-1">
+                      Peringatan: Gambar tidak dapat dimuat dari URL tersebut. Pastikan URL dapat diakses publik.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+                  Keterangan Gambar / Teks Alternatif (Alt)
+                </label>
+                <input
+                  value={urlAlt}
+                  onChange={(e) => setUrlAlt(e.target.value)}
+                  placeholder="Contoh: Diagram koneksi video switcher"
+                  className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none"
+                />
+              </div>
+
+              {urlError && <p className="text-xs text-tally-critical">{urlError}</p>}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-light dark:border-border-dark">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-3 py-1.5 text-xs text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!inputUrl.trim()}
+                  className="rounded-sm bg-accent text-white text-xs font-medium px-4 py-2 hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Check size={13} />
+                  Sematkan Gambar
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 'library' && (
+            <form onSubmit={handleLibrarySubmit} className="space-y-4">
+              {loadingLibrary ? (
+                <div className="py-12 flex justify-center items-center gap-2 text-xs text-muted-light dark:text-muted-dark">
+                  <Loader2 className="animate-spin" size={16} /> Memuat gambar tersimpan...
+                </div>
+              ) : libraryFiles.length === 0 ? (
+                <div className="py-10 text-center text-xs text-muted-light dark:text-muted-dark">
+                  <p>Belum ada gambar yang tersimpan di server.</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('upload')}
+                    className="mt-2 text-accent underline hover:opacity-80"
+                  >
+                    Unggah gambar baru sekarang
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-light dark:text-muted-dark">
+                    Pilih gambar yang pernah diunggah sebelumnya:
+                  </p>
+                  <div className="grid grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1">
+                    {libraryFiles.map((item) => {
+                      const isSelected = selectedLibraryUrl === item.url
+                      return (
+                        <div
+                          key={item.url}
+                          onClick={() => {
+                            setSelectedLibraryUrl(item.url)
+                            if (!libraryAlt) {
+                              setLibraryAlt(item.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '))
+                            }
+                          }}
+                          className={`group relative rounded border cursor-pointer overflow-hidden p-1 transition-all ${
+                            isSelected
+                              ? 'border-accent ring-2 ring-accent/30 bg-accent/5'
+                              : 'border-border-light dark:border-border-dark hover:border-accent/60'
+                          }`}
+                        >
+                          <img
+                            src={item.url}
+                            alt={item.name}
+                            className="w-full h-20 object-cover rounded"
+                          />
+                          <p className="text-[10px] truncate mt-1 text-muted-light dark:text-muted-dark">
+                            {item.name}
+                          </p>
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 bg-accent text-white p-0.5 rounded-full">
+                              <Check size={10} />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedLibraryUrl && (
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
+                    Keterangan Gambar / Teks Alternatif (Alt)
+                  </label>
+                  <input
+                    value={libraryAlt}
+                    onChange={(e) => setLibraryAlt(e.target.value)}
+                    placeholder="Contoh: Gambar alat switcher"
+                    className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-light dark:border-border-dark">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-3 py-1.5 text-xs text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!selectedLibraryUrl}
+                  className="rounded-sm bg-accent text-white text-xs font-medium px-4 py-2 hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Check size={13} />
+                  Sematkan Gambar Terpilih
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MarkdownToolbar({ textareaRef, value, onChange, onOpenImageModal }) {
   const insertFormatting = (before, after = '') => {
     const textarea = textareaRef.current
     if (!textarea) return
@@ -216,6 +734,15 @@ function MarkdownToolbar({ textareaRef, value, onChange }) {
         className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs text-accent font-medium border border-border-light dark:border-border-dark"
       >
         Link
+      </button>
+      <button
+        type="button"
+        title="Sematkan Gambar (Upload / URL / Pustaka)"
+        onClick={onOpenImageModal}
+        className="px-2 py-1 rounded hover:bg-surface-light dark:hover:bg-surface-dark text-xs text-accent font-medium border border-border-light dark:border-border-dark flex items-center gap-1"
+      >
+        <ImageIcon size={12} />
+        Gambar
       </button>
       <button
         type="button"
@@ -448,7 +975,7 @@ function AdminDashboard({ onLogout }) {
 function ArticleForm({ rooms, initialSlug, onDone, onCancel }) {
   const [form, setForm] = useState(EMPTY_ARTICLE)
   const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
 
@@ -470,32 +997,6 @@ function ArticleForm({ rooms, initialSlug, onDone, onCancel }) {
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
-  }
-
-  async function handleImageUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const base64 = reader.result.split(',')[1]
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, base64 }),
-      })
-      const data = await res.json()
-      setUploading(false)
-      if (res.ok) {
-        setForm((f) => ({
-          ...f,
-          content: `${f.content}\n\n![${file.name}](${data.url})\n`,
-        }))
-      } else {
-        alert(data.error || 'Gagal upload gambar.')
-      }
-    }
-    reader.readAsDataURL(file)
   }
 
   async function handleSubmit(e) {
@@ -619,13 +1120,21 @@ function ArticleForm({ rooms, initialSlug, onDone, onCancel }) {
           <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark">
             Isi artikel (Markdown)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-accent cursor-pointer hover:opacity-80">
-            {uploading ? <Loader2 className="animate-spin" size={13} /> : <Upload size={13} />}
-            Upload gambar
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-          </label>
+          <button
+            type="button"
+            onClick={() => setShowImageModal(true)}
+            className="flex items-center gap-1.5 text-xs text-accent hover:opacity-80 font-medium"
+          >
+            <ImageIcon size={13} />
+            Sematkan gambar
+          </button>
         </div>
-        <MarkdownToolbar textareaRef={textareaRef} value={form.content} onChange={(v) => update('content', v)} />
+        <MarkdownToolbar
+          textareaRef={textareaRef}
+          value={form.content}
+          onChange={(v) => update('content', v)}
+          onOpenImageModal={() => setShowImageModal(true)}
+        />
         <textarea
           required
           ref={textareaRef}
@@ -635,6 +1144,19 @@ function ArticleForm({ rooms, initialSlug, onDone, onCancel }) {
           className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={
             '## Gejala\nJelaskan gejala yang terlihat...\n\n## Penyebab\n...\n\n## Langkah Perbaikan\n1. ...\n2. ...'
+          }
+        />
+        <ImageModal
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          onInsert={(url, alt) =>
+            insertImageAtCursor(
+              textareaRef,
+              form.content,
+              (v) => update('content', v),
+              url,
+              alt
+            )
           }
         />
       </div>
@@ -684,6 +1206,7 @@ function equipmentArrayToText(arr) {
 function RoomForm({ initialSlug, onDone, onCancel }) {
   const [form, setForm] = useState(EMPTY_ROOM)
   const [loading, setLoading] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
 
@@ -803,10 +1326,25 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
       </div>
 
       <div>
-        <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
-          Tutorial / SOP ruangan (Markdown)
-        </label>
-        <MarkdownToolbar textareaRef={textareaRef} value={form.content} onChange={(v) => update('content', v)} />
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark">
+            Tutorial / SOP ruangan (Markdown)
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowImageModal(true)}
+            className="flex items-center gap-1.5 text-xs text-accent hover:opacity-80 font-medium"
+          >
+            <ImageIcon size={13} />
+            Sematkan gambar
+          </button>
+        </div>
+        <MarkdownToolbar
+          textareaRef={textareaRef}
+          value={form.content}
+          onChange={(v) => update('content', v)}
+          onOpenImageModal={() => setShowImageModal(true)}
+        />
         <textarea
           ref={textareaRef}
           value={form.content}
@@ -814,6 +1352,19 @@ function RoomForm({ initialSlug, onDone, onCancel }) {
           rows={12}
           className="w-full rounded-b-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm font-mono outline-none"
           placeholder={'## SOP Buka Ruangan\n1. ...\n\n## SOP Tutup Ruangan\n1. ...'}
+        />
+        <ImageModal
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          onInsert={(url, alt) =>
+            insertImageAtCursor(
+              textareaRef,
+              form.content,
+              (v) => update('content', v),
+              url,
+              alt
+            )
+          }
         />
       </div>
 
