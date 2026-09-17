@@ -439,7 +439,7 @@ export default function CreateStreamModal({ isOpen, onClose, onCreated }) {
               {/* 4. Playlist & Kategori Video */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1 flex items-center gap-1">
+                  <label className="flex items-center gap-1 text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
                     <ListPlus size={13} />
                     Masukkan ke Playlist (Opsional)
                   </label>
@@ -458,7 +458,7 @@ export default function CreateStreamModal({ isOpen, onClose, onCreated }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1 flex items-center gap-1">
+                  <label className="flex items-center gap-1 text-xs font-mono uppercase tracking-wide text-muted-light dark:text-muted-dark mb-1">
                     <Tag size={13} />
                     Kategori Siaran
                   </label>
