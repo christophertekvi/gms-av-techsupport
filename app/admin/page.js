@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { CATEGORIES } from '@/lib/categories'
 import { WILAYAH } from '@/lib/locations'
-import { Loader2, Upload, Trash2, Pencil, Plus, LogOut, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Upload, Trash2, Pencil, Plus, LogOut, Image as ImageIcon, Radio } from 'lucide-react'
+import LiveStreamingTab from '@/components/admin/LiveStreamingTab'
 
 
 const EMPTY_ARTICLE = {
@@ -359,12 +360,20 @@ function MarkdownToolbar({ textareaRef, value, onChange }) {
 }
 
 function AdminDashboard({ onLogout }) {
-  const [tab, setTab] = useState('articles') // articles | rooms
+  const [tab, setTab] = useState('articles') // articles | rooms | streaming
   const [articles, setArticles] = useState([])
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingSlug, setEditingSlug] = useState(null)
   const [showForm, setShowForm] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const queryTab = params.get('tab')
+    if (queryTab === 'streaming' || queryTab === 'rooms' || queryTab === 'articles') {
+      setTab(queryTab)
+    }
+  }, [])
 
   function refresh() {
     setLoading(true)
@@ -406,7 +415,7 @@ function AdminDashboard({ onLogout }) {
         <div>
           <h1 className="font-display text-2xl font-semibold">Panel Admin</h1>
           <p className="text-sm text-muted-light dark:text-muted-dark">
-            Kelola artikel &amp; wilayah/ruangan. Publish akan commit ke GitHub &amp; auto-deploy.
+            Kelola artikel, wilayah/ruangan, dan live streaming YouTube GMS Multimedia.
           </p>
         </div>
         <button
@@ -417,27 +426,36 @@ function AdminDashboard({ onLogout }) {
         </button>
       </div>
 
-      <div className="flex gap-1 mb-6 border-b border-border-light dark:border-border-dark">
-        {['articles', 'rooms'].map((t) => (
+      <div className="flex gap-1 mb-6 border-b border-border-light dark:border-border-dark overflow-x-auto overflow-y-hidden">
+        {[
+          { id: 'articles', label: 'Artikel' },
+          { id: 'rooms', label: 'Ruangan' },
+          { id: 'streaming', label: 'Live Streaming YouTube' },
+        ].map((t) => (
           <button
-            key={t}
+            key={t.id}
             onClick={() => {
-              setTab(t)
+              setTab(t.id)
               setShowForm(false)
               setEditingSlug(null)
             }}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              tab === t.id
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-light dark:text-muted-dark hover:text-ink-light dark:hover:text-ink-dark'
             }`}
           >
-            {t === 'articles' ? 'Artikel' : 'Ruangan'}
+            {t.id === 'streaming' && (
+              <Radio size={14} className={tab === 'streaming' ? 'text-red-500 animate-pulse' : ''} />
+            )}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {showForm ? (
+      {tab === 'streaming' ? (
+        <LiveStreamingTab />
+      ) : showForm ? (
         tab === 'articles' ? (
           <ArticleForm
             rooms={rooms}
