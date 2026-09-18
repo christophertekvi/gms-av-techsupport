@@ -21,9 +21,12 @@ import {
   Loader2,
   Tv,
   CheckCircle2,
+  MonitorPlay,
+  X,
 } from 'lucide-react'
 import CreateStreamModal from './CreateStreamModal'
 import StreamMatrixModal from './StreamMatrixModal'
+import LiveEmbedPlayer from './LiveEmbedPlayer'
 
 export default function LiveStreamingTab() {
   const [authStatus, setAuthStatus] = useState(null)
@@ -38,6 +41,7 @@ export default function LiveStreamingTab() {
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [copiedKeyId, setCopiedKeyId] = useState(null)
+  const [watchingId, setWatchingId] = useState(null) // ID broadcast yang sedang ditonton embed
 
   // Cek auth status YouTube
   const checkAuth = useCallback(async () => {
@@ -97,6 +101,39 @@ export default function LiveStreamingTab() {
       targetStatus === 'live' ? 'Mulai Live Streaming (Go Live)?' : 'Akhiri / Stop Live Streaming ini?'
     if (!confirm(`Konfirmasi: Apakah Anda yakin ingin ${actionText}`)) return
 
+    // Validasi sebelum Go Live: pastikan encoder sudah terhubung dan broadcast di status 'ready'
+    if (targetStatus === 'live') {
+      const broadcast = broadcasts.find((b) => b.id === broadcastId)
+      if (broadcast) {
+        const lifecycleStatus = broadcast.lifeCycleStatus
+        const encoderConnected = broadcast.stream?.streamStatus === 'active'
+
+        if (!encoderConnected) {
+          alert(
+            '❌ Go Live Gagal: Encoder Belum Terhubung\n\n' +
+            'YouTube menolak transisi karena encoder (switcher/OBS) belum mengirim stream ke YouTube.\n\n' +
+            'Langkah yang perlu dilakukan:\n' +
+            '1. Pastikan switcher (ATEM, vMix, atau OBS) sudah menyala\n' +
+            '2. Masukkan Stream Key yang benar ke software encoder\n' +
+            '3. Mulai output stream dari encoder\n' +
+            '4. Tunggu status Encoder berubah menjadi "Terhubung" (hijau)\n' +
+            '5. Coba Go Live kembali'
+          )
+          return
+        }
+
+        if (lifecycleStatus === 'created') {
+          alert(
+            '⚠️ Go Live Gagal: Siaran Belum Siap\n\n' +
+            `Status broadcast saat ini: "${lifecycleStatus}" (belum ready).\n\n` +
+            'YouTube memerlukan siaran dalam status "ready" sebelum bisa Go Live.\n' +
+            'Encoder sudah terdeteksi terhubung — tunggu beberapa detik lalu klik Refresh dan coba lagi.'
+          )
+          return
+        }
+      }
+    }
+
     setActionLoadingId(broadcastId)
     try {
       const res = await fetch(`/api/youtube/broadcasts/${broadcastId}/transition`, {
@@ -107,7 +144,19 @@ export default function LiveStreamingTab() {
       const data = await res.json()
       setActionLoadingId(null)
       if (!res.ok) {
-        alert(data.error || 'Gagal mengubah status siaran.')
+        // Terjemahkan error YouTube API ke pesan yang lebih mudah dipahami
+        const rawError = data.error || ''
+        let friendlyError = rawError
+        if (rawError.toLowerCase().includes('invalidtransition') || rawError.toLowerCase().includes('invalid transition')) {
+          friendlyError =
+            '❌ Invalid Transition\n\n' +
+            'YouTube menolak perpindahan status siaran ini. Kemungkinan penyebab:\n' +
+            '• Encoder belum mengirim video stream ke YouTube\n' +
+            '• Broadcast belum dalam status "ready" (coba Refresh dulu)\n' +
+            '• Stream Key yang digunakan tidak cocok dengan siaran ini\n\n' +
+            'Klik Refresh untuk memperbarui status, lalu coba lagi setelah encoder terhubung.'
+        }
+        alert(friendlyError)
         return
       }
       loadBroadcasts()
@@ -336,163 +385,209 @@ export default function LiveStreamingTab() {
                 return (
                   <div
                     key={b.id}
-                    className="p-4 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:border-accent/40 transition-colors shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
+                    className="rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden transition-colors hover:border-accent/40"
                   >
-                    {/* Thumbnail & Title Info */}
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      {/* Thumbnail Container */}
-                      <div className="relative w-36 sm:w-44 aspect-video rounded overflow-hidden bg-black shrink-0 border border-border-light dark:border-border-dark">
-                        {thumbUrl ? (
-                          <Image
-                            src={thumbUrl}
-                            alt={b.title}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                            <Radio size={24} />
-                          </div>
-                        )}
+                    {/* Card utama */}
+                    <div className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                      {/* Thumbnail & Title Info */}
+                      <div className="flex items-start gap-4 min-w-0 flex-1">
+                        {/* Thumbnail Container */}
+                        <div
+                          className={`relative w-36 sm:w-44 aspect-video rounded overflow-hidden bg-black shrink-0 border ${
+                            isLive
+                              ? 'border-red-500/60 cursor-pointer group'
+                              : 'border-border-light dark:border-border-dark'
+                          }`}
+                          onClick={() => isLive && setWatchingId(watchingId === b.id ? null : b.id)}
+                          title={isLive ? 'Klik untuk menonton siaran langsung' : undefined}
+                        >
+                          {thumbUrl ? (
+                            <Image
+                              src={thumbUrl}
+                              alt={b.title}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                              <Radio size={24} />
+                            </div>
+                          )}
 
-                        {/* Status Overlay Badge */}
-                        <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              isLive
-                                ? 'bg-red-600 text-white animate-pulse'
-                                : isTesting
-                                ? 'bg-amber-500 text-white'
-                                : isComplete
-                                ? 'bg-zinc-700 text-white'
-                                : 'bg-sky-600 text-white'
+                          {/* Play overlay for live */}
+                          {isLive && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+                                <MonitorPlay size={20} className="text-white" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Status Overlay Badge */}
+                          <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                isLive
+                                  ? 'bg-red-600 text-white animate-pulse'
+                                  : isTesting
+                                  ? 'bg-amber-500 text-white'
+                                  : isComplete
+                                  ? 'bg-zinc-700 text-white'
+                                  : 'bg-sky-600 text-white'
+                              }`}
+                            >
+                              {isLive ? 'LIVE' : isTesting ? 'TEST' : isComplete ? 'SELESAI' : 'UPCOMING'}
+                            </span>
+                          </div>
+
+                          {/* Privacy Badge */}
+                          <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] uppercase font-mono flex items-center gap-1">
+                            {b.privacyStatus === 'public' ? (
+                              <Globe size={10} />
+                            ) : b.privacyStatus === 'private' ? (
+                              <Lock size={10} />
+                            ) : (
+                              <Eye size={10} />
+                            )}
+                            <span>{b.privacyStatus}</span>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="min-w-0 space-y-1">
+                          <h4 className="text-sm font-semibold truncate hover:text-accent cursor-pointer" onClick={() => setSelectedBroadcast(b)}>
+                            {b.title}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-muted-light dark:text-muted-dark">
+                            <span className="flex items-center gap-1">
+                              <Clock size={12} />
+                              {formatDate(b.scheduledStartTime)}
+                            </span>
+
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  isEncoderConnected ? 'bg-emerald-500' : 'bg-zinc-400'
+                                }`}
+                              />
+                              {isEncoderConnected ? 'Encoder Terhubung' : 'Encoder Offline'}
+                            </span>
+
+                            {isLive && b.statistics?.concurrentViewers !== null && (
+                              <span className="text-red-500 font-bold">
+                                ● {b.statistics.concurrentViewers} Penonton
+                              </span>
+                            )}
+                          </div>
+
+                          {b.description && (
+                            <p className="text-xs text-muted-light dark:text-muted-dark line-clamp-1 opacity-80 pt-0.5">
+                              {b.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2 shrink-0 self-stretch sm:self-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-border-light dark:border-border-dark">
+                        {/* Watch Live Embed Button */}
+                        {isLive && (
+                          <button
+                            type="button"
+                            onClick={() => setWatchingId(watchingId === b.id ? null : b.id)}
+                            className={`px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all ${
+                              watchingId === b.id
+                                ? 'bg-red-600 text-white'
+                                : 'bg-red-600/10 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white'
                             }`}
                           >
-                            {isLive ? 'LIVE' : isTesting ? 'TEST' : isComplete ? 'SELESAI' : 'UPCOMING'}
-                          </span>
-                        </div>
-
-                        {/* Privacy Badge */}
-                        <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] uppercase font-mono flex items-center gap-1">
-                          {b.privacyStatus === 'public' ? (
-                            <Globe size={10} />
-                          ) : b.privacyStatus === 'private' ? (
-                            <Lock size={10} />
-                          ) : (
-                            <Eye size={10} />
-                          )}
-                          <span>{b.privacyStatus}</span>
-                        </div>
-                      </div>
-
-                      {/* Details */}
-                      <div className="min-w-0 space-y-1">
-                        <h4 className="text-sm font-semibold truncate hover:text-accent cursor-pointer" onClick={() => setSelectedBroadcast(b)}>
-                          {b.title}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-muted-light dark:text-muted-dark">
-                          <span className="flex items-center gap-1">
-                            <Clock size={12} />
-                            {formatDate(b.scheduledStartTime)}
-                          </span>
-
-                          <span className="flex items-center gap-1.5 font-medium">
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                isEncoderConnected ? 'bg-emerald-500' : 'bg-zinc-400'
-                              }`}
-                            />
-                            {isEncoderConnected ? 'Encoder Terhubung' : 'Encoder Offline'}
-                          </span>
-
-                          {isLive && b.statistics?.concurrentViewers !== null && (
-                            <span className="text-red-500 font-bold">
-                              ● {b.statistics.concurrentViewers} Penonton
-                            </span>
-                          )}
-                        </div>
-
-                        {b.description && (
-                          <p className="text-xs text-muted-light dark:text-muted-dark line-clamp-1 opacity-80 pt-0.5">
-                            {b.description}
-                          </p>
+                            {watchingId === b.id ? <X size={13} /> : <MonitorPlay size={13} />}
+                            <span>{watchingId === b.id ? 'Tutup Player' : 'Watch Live'}</span>
+                          </button>
                         )}
+
+                        {/* Copy Stream Key */}
+                        {streamKey && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyKey(streamKey, b.id)}
+                            className="px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center gap-1 transition-colors"
+                            title="Salin Stream Key untuk Switcher / OBS"
+                          >
+                            {copiedKeyId === b.id ? (
+                              <Check size={13} className="text-emerald-500" />
+                            ) : (
+                              <Copy size={13} />
+                            )}
+                            <span>{copiedKeyId === b.id ? 'Tersalin' : 'Stream Key'}</span>
+                          </button>
+                        )}
+
+                        {/* Start / Stop Button */}
+                        {!isLive && !isComplete && (
+                          <button
+                            type="button"
+                            disabled={actionLoadingId === b.id}
+                            onClick={() => handleQuickTransition(b.id, 'live')}
+                            className="px-3 py-1.5 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
+                          >
+                            {actionLoadingId === b.id ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <Play size={13} />
+                            )}
+                            <span>Go Live</span>
+                          </button>
+                        )}
+
+                        {isLive && (
+                          <button
+                            type="button"
+                            disabled={actionLoadingId === b.id}
+                            onClick={() => handleQuickTransition(b.id, 'complete')}
+                            className="px-3 py-1.5 rounded-sm bg-zinc-700 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
+                          >
+                            {actionLoadingId === b.id ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <Square size={13} />
+                            )}
+                            <span>Stop Stream</span>
+                          </button>
+                        )}
+
+                        {/* Matrix / Detail Button */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBroadcast(b)}
+                          className="px-3 py-1.5 rounded-sm bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                        >
+                          <Activity size={13} />
+                          <span>Studio Matrix</span>
+                        </button>
+
+                        {/* Link to YouTube Studio */}
+                        <a
+                          href={`https://studio.youtube.com/video/${b.id}/livestreaming`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark transition-colors"
+                          title="Buka di YouTube Studio Web"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-2 shrink-0 self-stretch sm:self-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-border-light dark:border-border-dark">
-                      {/* Copy Stream Key */}
-                      {streamKey && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyKey(streamKey, b.id)}
-                          className="px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center gap-1 transition-colors"
-                          title="Salin Stream Key untuk Switcher / OBS"
-                        >
-                          {copiedKeyId === b.id ? (
-                            <Check size={13} className="text-emerald-500" />
-                          ) : (
-                            <Copy size={13} />
-                          )}
-                          <span>{copiedKeyId === b.id ? 'Tersalin' : 'Stream Key'}</span>
-                        </button>
-                      )}
-
-                      {/* Start / Stop Button */}
-                      {!isLive && !isComplete && (
-                        <button
-                          type="button"
-                          disabled={actionLoadingId === b.id}
-                          onClick={() => handleQuickTransition(b.id, 'live')}
-                          className="px-3 py-1.5 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
-                        >
-                          {actionLoadingId === b.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : (
-                            <Play size={13} />
-                          )}
-                          <span>Go Live</span>
-                        </button>
-                      )}
-
-                      {isLive && (
-                        <button
-                          type="button"
-                          disabled={actionLoadingId === b.id}
-                          onClick={() => handleQuickTransition(b.id, 'complete')}
-                          className="px-3 py-1.5 rounded-sm bg-zinc-700 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
-                        >
-                          {actionLoadingId === b.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : (
-                            <Square size={13} />
-                          )}
-                          <span>Stop Stream</span>
-                        </button>
-                      )}
-
-                      {/* Matrix / Detail Button */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBroadcast(b)}
-                        className="px-3 py-1.5 rounded-sm bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
-                      >
-                        <Activity size={13} />
-                        <span>Studio Matrix</span>
-                      </button>
-
-                      {/* Link to YouTube Studio */}
-                      <a
-                        href={`https://studio.youtube.com/video/${b.id}/livestreaming`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark transition-colors"
-                        title="Buka di YouTube Studio Web"
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
+                    {/* Inline Embed Player — muncul hanya saat isLive & watchingId === b.id */}
+                    {isLive && watchingId === b.id && (
+                      <LiveEmbedPlayer
+                        videoId={b.id}
+                        title={b.title}
+                        viewerCount={b.statistics?.concurrentViewers}
+                        onClose={() => setWatchingId(null)}
+                      />
+                    )}
                   </div>
                 )
               })}
