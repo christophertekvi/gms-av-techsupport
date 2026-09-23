@@ -8,7 +8,6 @@ import {
   Square,
   Users,
   Eye,
-  EyeOff,
   Copy,
   Check,
   ExternalLink,
@@ -17,7 +16,6 @@ import {
   CheckCircle,
   Clock,
   Loader2,
-  Tv,
   ThumbsUp,
   Activity,
 } from 'lucide-react'
@@ -27,9 +25,7 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
-  const [copiedKey, setCopiedKey] = useState(false)
-  const [copiedUrl, setCopiedUrl] = useState(false)
-  const [showKey, setShowKey] = useState(false)
+  const [copiedVideoUrl, setCopiedVideoUrl] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
 
   const fetchMetrics = useCallback(async () => {
@@ -73,8 +69,7 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
 
   const streamStatus = metrics?.streamStatus || broadcast.stream?.streamStatus || 'inactive'
   const healthStatus = metrics?.healthStatus || broadcast.stream?.healthStatus || 'noData'
-  const rtmpUrl = metrics?.rtmpUrl || broadcast.stream?.rtmpUrl || 'rtmp://a.rtmp.youtube.com/live2'
-  const streamKey = metrics?.streamKey || broadcast.stream?.streamKey || ''
+  const videoUrl = `https://www.youtube.com/watch?v=${broadcast.id}`
 
   async function handleTransition(targetStatus) {
     const actionText =
@@ -105,15 +100,10 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
     }
   }
 
-  function handleCopy(text, type) {
-    navigator.clipboard.writeText(text)
-    if (type === 'url') {
-      setCopiedUrl(true)
-      setTimeout(() => setCopiedUrl(false), 2000)
-    } else {
-      setCopiedKey(true)
-      setTimeout(() => setCopiedKey(false), 2000)
-    }
+  function handleCopyVideoUrl() {
+    navigator.clipboard.writeText(videoUrl)
+    setCopiedVideoUrl(true)
+    setTimeout(() => setCopiedVideoUrl(false), 2000)
   }
 
   const getHealthBadge = (health) => {
@@ -151,7 +141,7 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-2xl my-6 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-5xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-2xl my-6 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light dark:border-border-dark bg-bg-light/60 dark:bg-bg-dark/60 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -210,8 +200,18 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
             </span>
           </div>
 
-          {/* Start / Stop Buttons */}
+          {/* Action Buttons & Links */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyVideoUrl}
+              className="px-3 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center gap-1.5 transition-colors"
+              title="Salin Link / URL Video YouTube"
+            >
+              {copiedVideoUrl ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              <span>{copiedVideoUrl ? 'URL Tersalin' : 'Copy URL Video'}</span>
+            </button>
+
             {!isLive && !isComplete && (
               <button
                 type="button"
@@ -314,140 +314,110 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
             </div>
           </div>
 
-          {/* Grid Layout: Video Preview & Stream Key Details */}
-          <div className="grid lg:grid-cols-12 gap-6">
-            {/* Live Preview Player */}
-            <div className="lg:col-span-7 space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider font-semibold text-muted-light dark:text-muted-dark flex items-center justify-between">
-                <span>Pratinjau Siaran (Live Preview)</span>
-                <a
-                  href={`https://youtube.com/watch?v=${broadcast.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-accent hover:underline lowercase font-normal flex items-center gap-1"
-                >
-                  <span>Buka di YouTube</span>
-                  <ExternalLink size={10} />
-                </a>
+          {/* Expanded Video Embed Section */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-mono uppercase tracking-wider font-semibold text-muted-light dark:text-muted-dark flex items-center gap-2">
+                <Radio size={14} className={isLive ? 'text-red-500 animate-pulse' : ''} />
+                <span>Pratinjau Siaran (Live Player Embed)</span>
               </h4>
 
-              <div className="aspect-video rounded-lg overflow-hidden border border-border-light dark:border-border-dark bg-black shadow-inner">
-                <iframe
-                  src={`https://www.youtube.com/embed/${broadcast.id}?autoplay=0&mute=1`}
-                  title="YouTube Preview"
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyVideoUrl}
+                  className="text-xs px-2.5 py-1 rounded border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark hover:text-accent flex items-center gap-1.5 transition-colors"
+                  title="Salin URL Video YouTube"
+                >
+                  {copiedVideoUrl ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                  <span>{copiedVideoUrl ? 'URL Tersalin' : 'Salin URL Video'}</span>
+                </button>
+
+                <a
+                  href={videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2.5 py-1 rounded border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark hover:text-accent flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Buka di YouTube</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+            </div>
+
+            {/* Video Container (Expanded, Full Width) */}
+            <div className="aspect-video w-full rounded-xl overflow-hidden border border-border-light dark:border-border-dark bg-black shadow-inner">
+              <iframe
+                src={`https://www.youtube.com/embed/${broadcast.id}?autoplay=0&mute=1`}
+                title={broadcast.title || 'YouTube Preview'}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+
+            {/* Broadcast Details Meta Bar */}
+            <div className="p-3.5 rounded-lg border border-border-light dark:border-border-dark bg-bg-light/40 dark:bg-bg-dark/40 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs text-muted-light dark:text-muted-dark">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="flex items-center gap-1.5">
+                  <Clock size={13} />
+                  <span>
+                    Jadwal:{' '}
+                    <strong className="text-foreground-light dark:text-foreground-dark">
+                      {broadcast.scheduledStartTime
+                        ? new Date(broadcast.scheduledStartTime).toLocaleString('id-ID', {
+                            dateStyle: 'full',
+                            timeStyle: 'short',
+                          })
+                        : '-'}
+                    </strong>
+                  </span>
+                </span>
+
+                <span>
+                  Privasi:{' '}
+                  <strong className="uppercase text-foreground-light dark:text-foreground-dark font-mono">
+                    {broadcast.privacyStatus}
+                  </strong>
+                </span>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-light dark:text-muted-dark pt-1">
-                <p>
-                  Jadwal:{' '}
-                  {broadcast.scheduledStartTime
-                    ? new Date(broadcast.scheduledStartTime).toLocaleString('id-ID', {
-                        dateStyle: 'full',
-                        timeStyle: 'short',
-                      })
-                    : '-'}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
+                <span>
+                  Auto-Start:{' '}
+                  <strong className={broadcast.contentDetails?.enableAutoStart ? 'text-emerald-500' : 'text-zinc-400'}>
+                    {broadcast.contentDetails?.enableAutoStart ? 'Aktif' : 'Non-aktif'}
+                  </strong>
+                </span>
+                <span>
+                  Auto-Stop:{' '}
+                  <strong className={broadcast.contentDetails?.enableAutoStop ? 'text-emerald-500' : 'text-zinc-400'}>
+                    {broadcast.contentDetails?.enableAutoStop ? 'Aktif' : 'Non-aktif'}
+                  </strong>
+                </span>
+                <span>
+                  DVR (Rewind):{' '}
+                  <strong className={broadcast.contentDetails?.enableDvr ? 'text-emerald-500' : 'text-zinc-400'}>
+                    {broadcast.contentDetails?.enableDvr ? 'Aktif' : 'Non-aktif'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Health Warnings if any */}
+            {metrics?.healthIssues && metrics.healthIssues.length > 0 && (
+              <div className="p-3.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs space-y-1.5">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <AlertTriangle size={14} />
+                  Catatan Konfigurasi Encoder:
                 </p>
-                <p>Privasi: <strong className="uppercase">{broadcast.privacyStatus}</strong></p>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                  {metrics.healthIssues.map((issue, idx) => (
+                    <li key={idx}>{issue.description || issue.reason || JSON.stringify(issue)}</li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            {/* Ingestion & Encoder Credentials */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="p-4 rounded-lg border border-border-light dark:border-border-dark bg-bg-light/40 dark:bg-bg-dark/40 space-y-3.5">
-                <h4 className="text-xs font-mono uppercase tracking-wider font-semibold text-muted-light dark:text-muted-dark">
-                  Koneksi Switcher / Encoder
-                </h4>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted-light dark:text-muted-dark mb-1">
-                    URL Server RTMP
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      readOnly
-                      value={rtmpUrl}
-                      className="flex-1 rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-2.5 py-1.5 text-xs font-mono select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(rtmpUrl, 'url')}
-                      className="p-2 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs"
-                      title="Salin URL RTMP"
-                    >
-                      {copiedUrl ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted-light dark:text-muted-dark mb-1">
-                    Stream Key
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      readOnly
-                      type={showKey ? 'text' : 'password'}
-                      value={streamKey || '(Key belum dibuat atau ditautkan)'}
-                      className="flex-1 rounded-sm border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-2.5 py-1.5 text-xs font-mono select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowKey(!showKey)}
-                      className="p-2 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark"
-                      title={showKey ? 'Sembunyikan Key' : 'Tampilkan Key'}
-                    >
-                      {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!streamKey}
-                      onClick={() => handleCopy(streamKey, 'key')}
-                      className="p-2 rounded-sm bg-accent text-white hover:opacity-90 text-xs disabled:opacity-50"
-                      title="Salin Stream Key"
-                    >
-                      {copiedKey ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-muted-light dark:text-muted-dark mt-1">
-                    Salin Stream Key ini ke <strong>vMix</strong>, <strong>ATEM Software Control</strong>, atau <strong>OBS Studio</strong>.
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-border-light dark:border-border-dark text-[11px] space-y-1 text-muted-light dark:text-muted-dark">
-                  <div className="flex justify-between">
-                    <span>Auto-Start:</span>
-                    <strong>{broadcast.contentDetails?.enableAutoStart ? 'Aktif' : 'Non-aktif'}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Auto-Stop:</span>
-                    <strong>{broadcast.contentDetails?.enableAutoStop ? 'Aktif' : 'Non-aktif'}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>DVR (Rewind):</span>
-                    <strong>{broadcast.contentDetails?.enableDvr ? 'Aktif' : 'Non-aktif'}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Health Warnings if any */}
-              {metrics?.healthIssues && metrics.healthIssues.length > 0 && (
-                <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs space-y-1">
-                  <p className="font-semibold flex items-center gap-1.5">
-                    <AlertTriangle size={13} />
-                    Catatan Konfigurasi Encoder:
-                  </p>
-                  <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                    {metrics.healthIssues.map((issue, idx) => (
-                      <li key={idx}>{issue.description || issue.reason || JSON.stringify(issue)}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

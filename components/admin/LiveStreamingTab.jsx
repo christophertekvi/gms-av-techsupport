@@ -40,7 +40,7 @@ export default function LiveStreamingTab() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
   const [actionLoadingId, setActionLoadingId] = useState(null)
-  const [copiedKeyId, setCopiedKeyId] = useState(null)
+  const [copiedUrlId, setCopiedUrlId] = useState(null)
   const [watchingId, setWatchingId] = useState(null) // ID broadcast yang sedang ditonton embed
 
   // Cek auth status YouTube
@@ -166,11 +166,12 @@ export default function LiveStreamingTab() {
     }
   }
 
-  const handleCopyKey = (key, id) => {
-    if (!key) return
-    navigator.clipboard.writeText(key)
-    setCopiedKeyId(id)
-    setTimeout(() => setCopiedKeyId(null), 2000)
+  const handleCopyUrl = (broadcastId) => {
+    if (!broadcastId) return
+    const url = `https://www.youtube.com/watch?v=${broadcastId}`
+    navigator.clipboard.writeText(url)
+    setCopiedUrlId(broadcastId)
+    setTimeout(() => setCopiedUrlId(null), 2000)
   }
 
   // Filter broadcasts
@@ -373,7 +374,6 @@ export default function LiveStreamingTab() {
                 const isLive = b.lifeCycleStatus === 'live'
                 const isTesting = b.lifeCycleStatus === 'testing'
                 const isComplete = b.lifeCycleStatus === 'complete'
-                const streamKey = b.stream?.streamKey || ''
                 const isEncoderConnected = b.stream?.streamStatus === 'active'
 
                 const thumbUrl =
@@ -488,48 +488,15 @@ export default function LiveStreamingTab() {
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex flex-wrap items-center gap-2 shrink-0 self-stretch sm:self-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-border-light dark:border-border-dark">
-                        {/* Watch Live Embed Button */}
-                        {isLive && (
-                          <button
-                            type="button"
-                            onClick={() => setWatchingId(watchingId === b.id ? null : b.id)}
-                            className={`px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all ${
-                              watchingId === b.id
-                                ? 'bg-red-600 text-white'
-                                : 'bg-red-600/10 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white'
-                            }`}
-                          >
-                            {watchingId === b.id ? <X size={13} /> : <MonitorPlay size={13} />}
-                            <span>{watchingId === b.id ? 'Tutup Player' : 'Watch Live'}</span>
-                          </button>
-                        )}
-
-                        {/* Copy Stream Key */}
-                        {streamKey && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyKey(streamKey, b.id)}
-                            className="px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center gap-1 transition-colors"
-                            title="Salin Stream Key untuk Switcher / OBS"
-                          >
-                            {copiedKeyId === b.id ? (
-                              <Check size={13} className="text-emerald-500" />
-                            ) : (
-                              <Copy size={13} />
-                            )}
-                            <span>{copiedKeyId === b.id ? 'Tersalin' : 'Stream Key'}</span>
-                          </button>
-                        )}
-
+                      {/* Action Buttons (Stacked Vertically) */}
+                      <div className="flex flex-col gap-1.5 shrink-0 self-stretch sm:self-center w-full sm:w-36 justify-center pt-3 md:pt-0 border-t md:border-t-0 border-border-light dark:border-border-dark">
                         {/* Start / Stop Button */}
                         {!isLive && !isComplete && (
                           <button
                             type="button"
                             disabled={actionLoadingId === b.id}
                             onClick={() => handleQuickTransition(b.id, 'live')}
-                            className="px-3 py-1.5 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
+                            className="w-full px-3 py-1.5 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
                           >
                             {actionLoadingId === b.id ? (
                               <Loader2 size={13} className="animate-spin" />
@@ -545,7 +512,7 @@ export default function LiveStreamingTab() {
                             type="button"
                             disabled={actionLoadingId === b.id}
                             onClick={() => handleQuickTransition(b.id, 'complete')}
-                            className="px-3 py-1.5 rounded-sm bg-zinc-700 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
+                            className="w-full px-3 py-1.5 rounded-sm bg-zinc-700 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors disabled:opacity-60"
                           >
                             {actionLoadingId === b.id ? (
                               <Loader2 size={13} className="animate-spin" />
@@ -556,14 +523,45 @@ export default function LiveStreamingTab() {
                           </button>
                         )}
 
+                        {/* Watch Live Embed Button */}
+                        {isLive && (
+                          <button
+                            type="button"
+                            onClick={() => setWatchingId(watchingId === b.id ? null : b.id)}
+                            className={`w-full px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+                              watchingId === b.id
+                                ? 'bg-red-600 text-white'
+                                : 'bg-red-600/10 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white'
+                            }`}
+                          >
+                            {watchingId === b.id ? <X size={13} /> : <MonitorPlay size={13} />}
+                            <span>{watchingId === b.id ? 'Tutup Player' : 'Watch Live'}</span>
+                          </button>
+                        )}
+
                         {/* Matrix / Detail Button */}
                         <button
                           type="button"
                           onClick={() => setSelectedBroadcast(b)}
-                          className="px-3 py-1.5 rounded-sm bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                          className="w-full px-3 py-1.5 rounded-sm bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/30 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Activity size={13} />
                           <span>Studio Matrix</span>
+                        </button>
+
+                        {/* Copy Video URL */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUrl(b.id)}
+                          className="w-full px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center justify-center gap-1.5 transition-colors"
+                          title="Salin Link / URL Video YouTube"
+                        >
+                          {copiedUrlId === b.id ? (
+                            <Check size={13} className="text-emerald-500" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                          <span>{copiedUrlId === b.id ? 'Tersalin' : 'Copy URL'}</span>
                         </button>
 
                         {/* Link to YouTube Studio */}
@@ -571,10 +569,11 @@ export default function LiveStreamingTab() {
                           href={`https://studio.youtube.com/video/${b.id}/livestreaming`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark transition-colors"
+                          className="w-full px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark hover:text-foreground-light dark:hover:text-foreground-dark text-xs flex items-center justify-center gap-1.5 transition-colors"
                           title="Buka di YouTube Studio Web"
                         >
-                          <ExternalLink size={14} />
+                          <ExternalLink size={13} />
+                          <span>YouTube Studio</span>
                         </a>
                       </div>
                     </div>

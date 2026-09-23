@@ -11,9 +11,9 @@ const body = Inter({ subsets: ['latin'], variable: '--font-body' })
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata = {
-  title: 'GMS Multimedia — Dokumentasi & Troubleshooting',
+  title: 'GMS Multimedia',
   description:
-    'Dokumentasi Troubleshooting dan Tutorial untuk Tim Multimedia & Produksi AV Gereja.',
+    'Dokumentasi & panduan untuk Tim Multimedia & Produksi AV GMS',
   icons: {
     icon: '/icon.png',
   },
