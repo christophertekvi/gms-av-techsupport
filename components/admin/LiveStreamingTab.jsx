@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import {
   Radio,
@@ -42,6 +42,8 @@ export default function LiveStreamingTab() {
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [copiedUrlId, setCopiedUrlId] = useState(null)
   const [watchingId, setWatchingId] = useState(null) // ID broadcast yang sedang ditonton embed
+  const [goLiveSuccessId, setGoLiveSuccessId] = useState(null) // ID broadcast yang baru saja berhasil Go Live
+  const livePlayerRef = useRef(null) // ref untuk scroll ke embed player
 
   // Cek auth status YouTube
   const checkAuth = useCallback(async () => {
@@ -101,7 +103,7 @@ export default function LiveStreamingTab() {
       targetStatus === 'live' ? 'Mulai Live Streaming (Go Live)?' : 'Akhiri / Stop Live Streaming ini?'
     if (!confirm(`Konfirmasi: Apakah Anda yakin ingin ${actionText}`)) return
 
-    // Validasi sebelum Go Live: pastikan encoder sudah terhubung dan broadcast di status 'ready'
+    // Validasi sebelum Go Live: pastikan encoder sudah terhubung
     if (targetStatus === 'live') {
       const broadcast = broadcasts.find((b) => b.id === broadcastId)
       if (broadcast) {
@@ -122,15 +124,17 @@ export default function LiveStreamingTab() {
           return
         }
 
+        // Status 'created' belum siap — tolak dengan pesan
         if (lifecycleStatus === 'created') {
           alert(
             '⚠️ Go Live Gagal: Siaran Belum Siap\n\n' +
             `Status broadcast saat ini: "${lifecycleStatus}" (belum ready).\n\n` +
-            'YouTube memerlukan siaran dalam status "ready" sebelum bisa Go Live.\n' +
+            'YouTube memerlukan siaran dalam status "ready" atau "testing" sebelum bisa Go Live.\n' +
             'Encoder sudah terdeteksi terhubung — tunggu beberapa detik lalu klik Refresh dan coba lagi.'
           )
           return
         }
+        // Status 'testing' — langsung izinkan, server akan handle transisi testing → live
       }
     }
 
@@ -143,6 +147,7 @@ export default function LiveStreamingTab() {
       })
       const data = await res.json()
       setActionLoadingId(null)
+
       if (!res.ok) {
         // Terjemahkan error YouTube API ke pesan yang lebih mudah dipahami
         const rawError = data.error || ''
@@ -159,7 +164,22 @@ export default function LiveStreamingTab() {
         alert(friendlyError)
         return
       }
-      loadBroadcasts()
+
+      // ✅ Go Live berhasil — reload broadcasts lalu buka embed player
+      if (targetStatus === 'live') {
+        await loadBroadcasts()
+        // Tampilkan sukses banner dan buka embed player otomatis
+        setGoLiveSuccessId(broadcastId)
+        setWatchingId(broadcastId)
+        // Scroll ke embed player setelah render
+        setTimeout(() => {
+          livePlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 400)
+        // Hilangkan banner sukses setelah 6 detik
+        setTimeout(() => setGoLiveSuccessId(null), 6000)
+      } else {
+        loadBroadcasts()
+      }
     } catch (err) {
       setActionLoadingId(null)
       alert(err.message || 'Terjadi kesalahan sistem saat mengubah status.')
@@ -374,7 +394,9 @@ export default function LiveStreamingTab() {
                 const isLive = b.lifeCycleStatus === 'live'
                 const isTesting = b.lifeCycleStatus === 'testing'
                 const isComplete = b.lifeCycleStatus === 'complete'
+                const isUpcoming = !isLive && !isTesting && !isComplete
                 const isEncoderConnected = b.stream?.streamStatus === 'active'
+                const isGoLiveSuccess = goLiveSuccessId === b.id
 
                 const thumbUrl =
                   b.thumbnails?.medium?.url ||
@@ -385,7 +407,14 @@ export default function LiveStreamingTab() {
                 return (
                   <div
                     key={b.id}
-                    className="rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden transition-colors hover:border-accent/40"
+                    ref={isLive && watchingId === b.id ? livePlayerRef : null}
+                    className={`rounded-lg border bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden transition-all ${
+                      isGoLiveSuccess
+                        ? 'border-red-500 ring-2 ring-red-500/30'
+                        : isLive
+                        ? 'border-red-500/40 hover:border-red-500/70'
+                        : 'border-border-light dark:border-border-dark hover:border-accent/40'
+                    }`}
                   >
                     {/* Card utama */}
                     <div className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
@@ -577,6 +606,15 @@ export default function LiveStreamingTab() {
                         </a>
                       </div>
                     </div>
+
+                    {/* Banner sukses Go Live */}
+                    {isGoLiveSuccess && (
+                      <div className="mx-4 mb-0 mt-0 px-4 py-3 rounded-md bg-red-600/10 border border-red-500/30 text-red-500 dark:text-red-400 text-xs flex items-center gap-2 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                        <span className="font-semibold">🎉 Siaran LIVE berhasil dimulai!</span>
+                        <span className="text-muted-light dark:text-muted-dark">— Player embed ditampilkan di bawah.</span>
+                      </div>
+                    )}
 
                     {/* Inline Embed Player — muncul hanya saat isLive & watchingId === b.id */}
                     {isLive && watchingId === b.id && (
