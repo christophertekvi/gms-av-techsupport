@@ -197,8 +197,8 @@ export default function LiveStreamingTab() {
   // Filter broadcasts
   const filteredBroadcasts = broadcasts.filter((b) => {
     const status = b.lifeCycleStatus
-    if (filter === 'upcoming') return status === 'created' || status === 'ready'
-    if (filter === 'live') return status === 'live' || status === 'testing'
+    if (filter === 'upcoming') return status === 'created' || status === 'ready' || status === 'testing'
+    if (filter === 'live') return status === 'live'
     if (filter === 'completed') return status === 'complete'
     return true
   })
