@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import ConfirmModal from './ConfirmModal'
 import {
   X,
   Radio,
@@ -71,10 +72,16 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
   const healthStatus = metrics?.healthStatus || broadcast.stream?.healthStatus || 'noData'
   const videoUrl = `https://www.youtube.com/watch?v=${broadcast.id}`
 
-  async function handleTransition(targetStatus) {
-    const actionText =
-      targetStatus === 'live' ? 'Mulai Live Streaming (Go Live)?' : 'Akhiri / Stop Live Streaming ini?'
-    if (!confirm(`Konfirmasi: Apakah Anda yakin ingin ${actionText}`)) return
+  const [confirmTarget, setConfirmTarget] = useState(null)
+
+  function handleTransition(targetStatus) {
+    setConfirmTarget(targetStatus)
+  }
+
+  async function executeTransition() {
+    const targetStatus = confirmTarget
+    if (!targetStatus) return
+    setConfirmTarget(null)
 
     setActionLoading(true)
     setActionError('')
@@ -440,6 +447,21 @@ export default function StreamMatrixModal({ broadcast, isOpen, onClose, onRefres
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmTarget}
+        mode="confirm"
+        variant={confirmTarget === 'live' ? 'danger' : 'default'}
+        title={confirmTarget === 'live' ? 'Mulai Live Streaming?' : 'Akhiri Live Streaming?'}
+        message={
+          confirmTarget === 'live'
+            ? `Apakah Anda yakin ingin memulai siaran "${broadcast.title}" (Go Live)?`
+            : `Apakah Anda yakin ingin mengakhiri siaran "${broadcast.title}"? Siaran yang sudah diakhiri tidak dapat dimulai ulang.`
+        }
+        confirmText={confirmTarget === 'live' ? 'Ya, Go Live' : 'Ya, Stop Stream'}
+        onConfirm={executeTransition}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   )
 }

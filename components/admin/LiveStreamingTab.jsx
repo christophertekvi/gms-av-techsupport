@@ -27,6 +27,7 @@ import {
 import CreateStreamModal from './CreateStreamModal'
 import StreamMatrixModal from './StreamMatrixModal'
 import LiveEmbedPlayer from './LiveEmbedPlayer'
+import ConfirmModal from './ConfirmModal'
 
 export default function LiveStreamingTab() {
   const [authStatus, setAuthStatus] = useState(null)
@@ -43,6 +44,7 @@ export default function LiveStreamingTab() {
   const [copiedUrlId, setCopiedUrlId] = useState(null)
   const [watchingId, setWatchingId] = useState(null) // ID broadcast yang sedang ditonton embed
   const [goLiveSuccessId, setGoLiveSuccessId] = useState(null) // ID broadcast yang baru saja berhasil Go Live
+  const [dialogState, setDialogState] = useState(null)
   const livePlayerRef = useRef(null) // ref untuk scroll ke embed player
 
   // Cek auth status YouTube
@@ -86,58 +88,37 @@ export default function LiveStreamingTab() {
   }, [checkAuth])
 
   // Disconnect Channel
-  const handleDisconnect = async () => {
-    if (!confirm('Putuskan koneksi channel YouTube ini dari panel admin?')) return
+  const executeDisconnect = async () => {
+    setDialogState(null)
     try {
       await fetch('/api/youtube/auth', { method: 'DELETE' })
       setAuthStatus((prev) => ({ ...prev, connected: false, channel: null }))
       setBroadcasts([])
     } catch (err) {
-      alert('Gagal memutuskan koneksi: ' + err.message)
+      setDialogState({
+        mode: 'alert',
+        variant: 'danger',
+        title: 'Gagal Memutuskan Koneksi',
+        message: err.message || 'Terjadi kesalahan saat memutuskan koneksi channel.',
+        confirmText: 'Tutup',
+      })
     }
   }
 
-  // Quick Start / Stop
-  const handleQuickTransition = async (broadcastId, targetStatus) => {
-    const actionText =
-      targetStatus === 'live' ? 'Mulai Live Streaming (Go Live)?' : 'Akhiri / Stop Live Streaming ini?'
-    if (!confirm(`Konfirmasi: Apakah Anda yakin ingin ${actionText}`)) return
+  const handleDisconnect = () => {
+    setDialogState({
+      mode: 'confirm',
+      variant: 'danger',
+      title: 'Putuskan Koneksi Channel?',
+      message: 'Putuskan koneksi channel YouTube ini dari panel admin?',
+      confirmText: 'Ya, Putuskan',
+      onConfirm: executeDisconnect,
+    })
+  }
 
-    // Validasi sebelum Go Live: pastikan encoder sudah terhubung
-    if (targetStatus === 'live') {
-      const broadcast = broadcasts.find((b) => b.id === broadcastId)
-      if (broadcast) {
-        const lifecycleStatus = broadcast.lifeCycleStatus
-        const encoderConnected = broadcast.stream?.streamStatus === 'active'
-
-        if (!encoderConnected) {
-          alert(
-            '❌ Go Live Gagal: Encoder Belum Terhubung\n\n' +
-            'YouTube menolak transisi karena encoder (switcher/OBS) belum mengirim stream ke YouTube.\n\n' +
-            'Langkah yang perlu dilakukan:\n' +
-            '1. Pastikan switcher (ATEM, vMix, atau OBS) sudah menyala\n' +
-            '2. Masukkan Stream Key yang benar ke software encoder\n' +
-            '3. Mulai output stream dari encoder\n' +
-            '4. Tunggu status Encoder berubah menjadi "Terhubung" (hijau)\n' +
-            '5. Coba Go Live kembali'
-          )
-          return
-        }
-
-        // Status 'created' belum siap — tolak dengan pesan
-        if (lifecycleStatus === 'created') {
-          alert(
-            '⚠️ Go Live Gagal: Siaran Belum Siap\n\n' +
-            `Status broadcast saat ini: "${lifecycleStatus}" (belum ready).\n\n` +
-            'YouTube memerlukan siaran dalam status "ready" atau "testing" sebelum bisa Go Live.\n' +
-            'Encoder sudah terdeteksi terhubung — tunggu beberapa detik lalu klik Refresh dan coba lagi.'
-          )
-          return
-        }
-        // Status 'testing' — langsung izinkan, server akan handle transisi testing → live
-      }
-    }
-
+  // Eksekusi Start / Stop setelah konfirmasi popup
+  const executeQuickTransition = async (broadcastId, targetStatus) => {
+    setDialogState(null)
     setActionLoadingId(broadcastId)
     try {
       const res = await fetch(`/api/youtube/broadcasts/${broadcastId}/transition`, {
@@ -154,36 +135,99 @@ export default function LiveStreamingTab() {
         let friendlyError = rawError
         if (rawError.toLowerCase().includes('invalidtransition') || rawError.toLowerCase().includes('invalid transition')) {
           friendlyError =
-            '❌ Invalid Transition\n\n' +
             'YouTube menolak perpindahan status siaran ini. Kemungkinan penyebab:\n' +
             '• Encoder belum mengirim video stream ke YouTube\n' +
             '• Broadcast belum dalam status "ready" (coba Refresh dulu)\n' +
             '• Stream Key yang digunakan tidak cocok dengan siaran ini\n\n' +
             'Klik Refresh untuk memperbarui status, lalu coba lagi setelah encoder terhubung.'
         }
-        alert(friendlyError)
+        setDialogState({
+          mode: 'alert',
+          variant: 'danger',
+          title: 'Gagal Mengubah Status Siaran',
+          message: friendlyError,
+          confirmText: 'Mengerti',
+        })
         return
       }
 
       // ✅ Go Live berhasil — reload broadcasts lalu buka embed player
       if (targetStatus === 'live') {
         await loadBroadcasts()
-        // Tampilkan sukses banner dan buka embed player otomatis
         setGoLiveSuccessId(broadcastId)
         setWatchingId(broadcastId)
-        // Scroll ke embed player setelah render
         setTimeout(() => {
           livePlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }, 400)
-        // Hilangkan banner sukses setelah 6 detik
         setTimeout(() => setGoLiveSuccessId(null), 6000)
       } else {
         loadBroadcasts()
       }
     } catch (err) {
       setActionLoadingId(null)
-      alert(err.message || 'Terjadi kesalahan sistem saat mengubah status.')
+      setDialogState({
+        mode: 'alert',
+        variant: 'danger',
+        title: 'Terjadi Kesalahan Sistem',
+        message: err.message || 'Terjadi kesalahan sistem saat mengubah status.',
+        confirmText: 'Tutup',
+      })
     }
+  }
+
+  // Quick Start / Stop
+  const handleQuickTransition = (broadcastId, targetStatus) => {
+    const broadcast = broadcasts.find((b) => b.id === broadcastId)
+
+    // Validasi sebelum Go Live: pastikan encoder sudah terhubung
+    if (targetStatus === 'live' && broadcast) {
+      const lifecycleStatus = broadcast.lifeCycleStatus
+      const encoderConnected = broadcast.stream?.streamStatus === 'active'
+
+      if (!encoderConnected) {
+        setDialogState({
+          mode: 'alert',
+          variant: 'danger',
+          title: 'Go Live Gagal: Encoder Belum Terhubung',
+          message:
+            'YouTube menolak transisi karena encoder (switcher/OBS) belum mengirim stream ke YouTube.\n\n' +
+            'Langkah yang perlu dilakukan:\n' +
+            '1. Pastikan switcher (ATEM, vMix, atau OBS) sudah menyala\n' +
+            '2. Masukkan Stream Key yang benar ke software encoder\n' +
+            '3. Mulai output stream dari encoder\n' +
+            '4. Tunggu status Encoder berubah menjadi "Terhubung" (hijau)\n' +
+            '5. Coba Go Live kembali',
+          confirmText: 'Mengerti',
+        })
+        return
+      }
+
+      if (lifecycleStatus === 'created') {
+        setDialogState({
+          mode: 'alert',
+          variant: 'warning',
+          title: 'Go Live Gagal: Siaran Belum Siap',
+          message:
+            `Status broadcast saat ini: "${lifecycleStatus}" (belum ready).\n\n` +
+            'YouTube memerlukan siaran dalam status "ready" sebelum bisa Go Live.\n' +
+            'Encoder sudah terdeteksi terhubung — tunggu beberapa detik lalu klik Refresh dan coba lagi.',
+          confirmText: 'Mengerti',
+        })
+        return
+      }
+    }
+
+    const isGoingLive = targetStatus === 'live'
+    setDialogState({
+      mode: 'confirm',
+      variant: isGoingLive ? 'danger' : 'default',
+      title: isGoingLive ? 'Mulai Live Streaming?' : 'Akhiri Live Streaming?',
+      message: isGoingLive
+        ? `Apakah Anda yakin ingin memulai siaran "${broadcast?.title || 'ini'}" (Go Live)?`
+        : `Apakah Anda yakin ingin mengakhiri siaran "${broadcast?.title || 'ini'}"? Siaran yang sudah diakhiri tidak dapat dimulai ulang.`,
+      confirmText: isGoingLive ? 'Ya, Go Live' : 'Ya, Stop Stream',
+      onConfirm: () => executeQuickTransition(broadcastId, targetStatus),
+    })
   }
 
   const handleCopyUrl = (broadcastId) => {
@@ -389,137 +433,141 @@ export default function LiveStreamingTab() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4">
-              {filteredBroadcasts.map((b) => {
-                const isLive = b.lifeCycleStatus === 'live'
-                const isTesting = b.lifeCycleStatus === 'testing'
-                const isComplete = b.lifeCycleStatus === 'complete'
-                const isUpcoming = !isLive && !isTesting && !isComplete
-                const isEncoderConnected = b.stream?.streamStatus === 'active'
-                const isGoLiveSuccess = goLiveSuccessId === b.id
-
-                const thumbUrl =
-                  b.thumbnails?.medium?.url ||
-                  b.thumbnails?.high?.url ||
-                  b.thumbnails?.default?.url ||
-                  null
-
+            <div className="space-y-4">
+              {/* Inline Embed Player — tampil full-width di atas grid saat Watch Live aktif */}
+              {watchingId && (() => {
+                const watchedBroadcast = filteredBroadcasts.find((b) => b.id === watchingId && b.lifeCycleStatus === 'live')
+                if (!watchedBroadcast) return null
                 return (
-                  <div
-                    key={b.id}
-                    ref={isLive && watchingId === b.id ? livePlayerRef : null}
-                    className={`rounded-lg border bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden transition-all ${
-                      isGoLiveSuccess
-                        ? 'border-red-500 ring-2 ring-red-500/30'
-                        : isLive
-                        ? 'border-red-500/40 hover:border-red-500/70'
-                        : 'border-border-light dark:border-border-dark hover:border-accent/40'
-                    }`}
-                  >
-                    {/* Card utama */}
-                    <div className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                      {/* Thumbnail & Title Info */}
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
-                        {/* Thumbnail Container */}
-                        <div
-                          className={`relative w-36 sm:w-44 aspect-video rounded overflow-hidden bg-black shrink-0 border ${
-                            isLive
-                              ? 'border-red-500/60 cursor-pointer group'
-                              : 'border-border-light dark:border-border-dark'
-                          }`}
-                          onClick={() => isLive && setWatchingId(watchingId === b.id ? null : b.id)}
-                          title={isLive ? 'Klik untuk menonton siaran langsung' : undefined}
-                        >
-                          {thumbUrl ? (
-                            <Image
-                              src={thumbUrl}
-                              alt={b.title}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                              <Radio size={24} />
-                            </div>
-                          )}
+                  <div ref={livePlayerRef} className="rounded-lg border border-red-500/40 bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+                    {goLiveSuccessId === watchedBroadcast.id && (
+                      <div className="px-4 py-3 bg-red-600/10 border-b border-red-500/30 text-red-500 dark:text-red-400 text-xs flex items-center gap-2 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                        <span className="font-semibold">🎉 Siaran LIVE berhasil dimulai!</span>
+                        <span className="text-muted-light dark:text-muted-dark">— Player embed ditampilkan di bawah.</span>
+                      </div>
+                    )}
+                    <LiveEmbedPlayer
+                      videoId={watchedBroadcast.id}
+                      title={watchedBroadcast.title}
+                      viewerCount={watchedBroadcast.statistics?.concurrentViewers}
+                      onClose={() => setWatchingId(null)}
+                    />
+                  </div>
+                )
+              })()}
 
-                          {/* Play overlay for live */}
-                          {isLive && (
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
-                                <MonitorPlay size={20} className="text-white" />
-                              </div>
-                            </div>
-                          )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {filteredBroadcasts.map((b) => {
+                  const isLive = b.lifeCycleStatus === 'live'
+                  const isTesting = b.lifeCycleStatus === 'testing'
+                  const isComplete = b.lifeCycleStatus === 'complete'
+                  const isEncoderConnected = b.stream?.streamStatus === 'active'
+                  const isGoLiveSuccess = goLiveSuccessId === b.id
 
-                          {/* Status Overlay Badge */}
-                          <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                isLive
-                                  ? 'bg-red-600 text-white animate-pulse'
-                                  : isTesting
-                                  ? 'bg-amber-500 text-white'
-                                  : isComplete
-                                  ? 'bg-zinc-700 text-white'
-                                  : 'bg-sky-600 text-white'
-                              }`}
-                            >
-                              {isLive ? 'LIVE' : isTesting ? 'TEST' : isComplete ? 'SELESAI' : 'UPCOMING'}
-                            </span>
-                          </div>
+                  return (
+                    <div
+                      key={b.id}
+                      className={`rounded-lg border bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden transition-all flex flex-col ${
+                        isGoLiveSuccess
+                          ? 'border-red-500 ring-2 ring-red-500/30'
+                          : isLive
+                          ? 'border-red-500/40 hover:border-red-500/70'
+                          : 'border-border-light dark:border-border-dark hover:border-accent/40'
+                      }`}
+                    >
+                      {/* Playable Iframe Container */}
+                      <div
+                        className={`relative w-full aspect-video overflow-hidden bg-black border-b ${
+                          isLive
+                            ? 'border-red-500/60'
+                            : 'border-border-light dark:border-border-dark'
+                        }`}
+                      >
+                        <iframe
+                          src={`https://www.youtube.com/embed/${b.id}?rel=0&modestbranding=1&playsinline=1`}
+                          title={b.title}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          loading="lazy"
+                        />
 
-                          {/* Privacy Badge */}
-                          <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] uppercase font-mono flex items-center gap-1">
-                            {b.privacyStatus === 'public' ? (
-                              <Globe size={10} />
-                            ) : b.privacyStatus === 'private' ? (
-                              <Lock size={10} />
-                            ) : (
-                              <Eye size={10} />
-                            )}
-                            <span>{b.privacyStatus}</span>
-                          </div>
+                        {/* Status Overlay Badge */}
+                        <div className="pointer-events-none absolute top-2 left-2 flex items-center gap-1">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              isLive
+                                ? 'bg-red-600 text-white animate-pulse'
+                                : isTesting
+                                ? 'bg-amber-500 text-white'
+                                : isComplete
+                                ? 'bg-zinc-700 text-white'
+                                : 'bg-sky-600 text-white'
+                            }`}
+                          >
+                            {isLive ? 'LIVE' : isTesting ? 'TEST' : isComplete ? 'SELESAI' : 'UPCOMING'}
+                          </span>
                         </div>
 
-                        {/* Details */}
-                        <div className="min-w-0 space-y-1">
-                          <h4 className="text-sm font-semibold truncate hover:text-accent cursor-pointer" onClick={() => setSelectedBroadcast(b)}>
-                            {b.title}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-muted-light dark:text-muted-dark">
-                            <span className="flex items-center gap-1">
-                              <Clock size={12} />
-                              {formatDate(b.scheduledStartTime)}
-                            </span>
-
-                            <span className="flex items-center gap-1.5 font-medium">
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  isEncoderConnected ? 'bg-emerald-500' : 'bg-zinc-400'
-                                }`}
-                              />
-                              {isEncoderConnected ? 'Encoder Terhubung' : 'Encoder Offline'}
-                            </span>
-
-                            {isLive && b.statistics?.concurrentViewers !== null && (
-                              <span className="text-red-500 font-bold">
-                                ● {b.statistics.concurrentViewers} Penonton
-                              </span>
-                            )}
-                          </div>
-
-                          {b.description && (
-                            <p className="text-xs text-muted-light dark:text-muted-dark line-clamp-1 opacity-80 pt-0.5">
-                              {b.description}
-                            </p>
+                        {/* Privacy Badge */}
+                        <div className="pointer-events-none absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] uppercase font-mono flex items-center gap-1">
+                          {b.privacyStatus === 'public' ? (
+                            <Globe size={10} />
+                          ) : b.privacyStatus === 'private' ? (
+                            <Lock size={10} />
+                          ) : (
+                            <Eye size={10} />
                           )}
+                          <span>{b.privacyStatus}</span>
                         </div>
                       </div>
 
-                      {/* Action Buttons (Stacked Vertically) */}
-                      <div className="flex flex-col gap-1.5 shrink-0 self-stretch sm:self-center w-full sm:w-36 justify-center pt-3 md:pt-0 border-t md:border-t-0 border-border-light dark:border-border-dark">
-                        {/* Start / Stop Button */}
+                      {/* Card Body */}
+                      <div className="p-3.5 flex-1 flex flex-col gap-2 min-w-0">
+                        <h4
+                          className="text-sm font-semibold line-clamp-2 hover:text-accent cursor-pointer leading-snug"
+                          onClick={() => setSelectedBroadcast(b)}
+                          title={b.title}
+                        >
+                          {b.title}
+                        </h4>
+
+                        <div className="space-y-1 text-xs text-muted-light dark:text-muted-dark">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Clock size={12} className="shrink-0" />
+                            <span className="truncate">{formatDate(b.scheduledStartTime)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 font-medium truncate">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isEncoderConnected ? 'bg-emerald-500' : 'bg-zinc-400'
+                                }`}
+                              />
+                              <span className="truncate">
+                                {isEncoderConnected ? 'Encoder Terhubung' : 'Encoder Offline'}
+                              </span>
+                            </span>
+
+                            {isLive && b.statistics?.concurrentViewers !== null && (
+                              <span className="text-red-500 font-bold shrink-0">
+                                ● {b.statistics.concurrentViewers}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {b.description && (
+                          <p className="text-xs text-muted-light dark:text-muted-dark line-clamp-2 opacity-80">
+                            {b.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Card Actions */}
+                      <div className="p-3.5 pt-2.5 mt-auto border-t border-border-light dark:border-border-dark flex flex-col gap-1.5">
                         {!isLive && !isComplete && (
                           <button
                             type="button"
@@ -552,23 +600,6 @@ export default function LiveStreamingTab() {
                           </button>
                         )}
 
-                        {/* Watch Live Embed Button */}
-                        {isLive && (
-                          <button
-                            type="button"
-                            onClick={() => setWatchingId(watchingId === b.id ? null : b.id)}
-                            className={`w-full px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all ${
-                              watchingId === b.id
-                                ? 'bg-red-600 text-white'
-                                : 'bg-red-600/10 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white'
-                            }`}
-                          >
-                            {watchingId === b.id ? <X size={13} /> : <MonitorPlay size={13} />}
-                            <span>{watchingId === b.id ? 'Tutup Player' : 'Watch Live'}</span>
-                          </button>
-                        )}
-
-                        {/* Matrix / Detail Button */}
                         <button
                           type="button"
                           onClick={() => setSelectedBroadcast(b)}
@@ -578,56 +609,37 @@ export default function LiveStreamingTab() {
                           <span>Studio Matrix</span>
                         </button>
 
-                        {/* Copy Video URL */}
-                        <button
-                          type="button"
-                          onClick={() => handleCopyUrl(b.id)}
-                          className="w-full px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center justify-center gap-1.5 transition-colors"
-                          title="Salin Link / URL Video YouTube"
-                        >
-                          {copiedUrlId === b.id ? (
-                            <Check size={13} className="text-emerald-500" />
-                          ) : (
-                            <Copy size={13} />
-                          )}
-                          <span>{copiedUrlId === b.id ? 'Tersalin' : 'Copy URL'}</span>
-                        </button>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyUrl(b.id)}
+                            className="w-full px-2 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-xs flex items-center justify-center gap-1 transition-colors"
+                            title="Salin Link / URL Video YouTube"
+                          >
+                            {copiedUrlId === b.id ? (
+                              <Check size={12} className="text-emerald-500" />
+                            ) : (
+                              <Copy size={12} />
+                            )}
+                            <span>{copiedUrlId === b.id ? 'Tersalin' : 'Copy URL'}</span>
+                          </button>
 
-                        {/* Link to YouTube Studio */}
-                        <a
-                          href={`https://studio.youtube.com/video/${b.id}/livestreaming`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full px-2.5 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark hover:text-foreground-light dark:hover:text-foreground-dark text-xs flex items-center justify-center gap-1.5 transition-colors"
-                          title="Buka di YouTube Studio Web"
-                        >
-                          <ExternalLink size={13} />
-                          <span>YouTube Studio</span>
-                        </a>
+                          <a
+                            href={`https://studio.youtube.com/video/${b.id}/livestreaming`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full px-2 py-1.5 rounded-sm border border-border-light dark:border-border-dark hover:bg-surface-light dark:hover:bg-surface-dark text-muted-light dark:text-muted-dark hover:text-foreground-light dark:hover:text-foreground-dark text-xs flex items-center justify-center gap-1 transition-colors"
+                            title="Buka di YouTube Studio Web"
+                          >
+                            <ExternalLink size={12} />
+                            <span>Studio</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Banner sukses Go Live */}
-                    {isGoLiveSuccess && (
-                      <div className="mx-4 mb-0 mt-0 px-4 py-3 rounded-md bg-red-600/10 border border-red-500/30 text-red-500 dark:text-red-400 text-xs flex items-center gap-2 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                        <span className="font-semibold">🎉 Siaran LIVE berhasil dimulai!</span>
-                        <span className="text-muted-light dark:text-muted-dark">— Player embed ditampilkan di bawah.</span>
-                      </div>
-                    )}
-
-                    {/* Inline Embed Player — muncul hanya saat isLive & watchingId === b.id */}
-                    {isLive && watchingId === b.id && (
-                      <LiveEmbedPlayer
-                        videoId={b.id}
-                        title={b.title}
-                        viewerCount={b.statistics?.concurrentViewers}
-                        onClose={() => setWatchingId(null)}
-                      />
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -647,6 +659,20 @@ export default function LiveStreamingTab() {
         isOpen={!!selectedBroadcast}
         onClose={() => setSelectedBroadcast(null)}
         onRefreshList={() => loadBroadcasts()}
+      />
+
+      <ConfirmModal
+        isOpen={!!dialogState}
+        mode={dialogState?.mode}
+        variant={dialogState?.variant}
+        title={dialogState?.title}
+        message={dialogState?.message}
+        confirmText={dialogState?.confirmText}
+        onConfirm={() => {
+          if (dialogState?.onConfirm) dialogState.onConfirm()
+          else setDialogState(null)
+        }}
+        onCancel={() => setDialogState(null)}
       />
     </div>
   )

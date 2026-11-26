@@ -83,44 +83,20 @@ export async function POST(req, { params }) {
       )
     }
 
-    // Jika lifecycle adalah 'ready', coba langsung go live
-    // Jika gagal, coba dua langkah: testing → live
-    if (lifeCycleStatus === 'ready') {
+    // Langsung transisi ke 'live' tanpa melalui 'testing'
+    if (lifeCycleStatus === 'ready' || lifeCycleStatus === 'testing') {
       try {
         const result = await transitionBroadcast(id, 'live')
-        return NextResponse.json({ ok: true, result, path: 'direct' })
+        return NextResponse.json({
+          ok: true,
+          result,
+          path: lifeCycleStatus === 'testing' ? 'from_testing' : 'direct',
+        })
       } catch (err) {
-        // Langsung ke 'live' gagal — coba via 'testing' dahulu
-        console.warn(`Direct live transition failed (${err.message}), trying testing → live...`)
-        try {
-          await transitionBroadcast(id, 'testing')
-          // Tunggu sebentar agar YouTube memproses transisi ke testing
-          await new Promise((r) => setTimeout(r, 2000))
-          const result = await transitionBroadcast(id, 'live')
-          return NextResponse.json({ ok: true, result, path: 'testing_then_live' })
-        } catch (err2) {
-          console.error('Fallback testing→live juga gagal:', err2)
-          return NextResponse.json(
-            {
-              error:
-                'Gagal Go Live. YouTube menolak transisi baik langsung maupun via testing. ' +
-                'Kemungkinan encoder baru saja terhubung — tunggu 10-15 detik, klik Refresh, lalu coba lagi.',
-            },
-            { status: 400 }
-          )
-        }
-      }
-    }
-
-    // Jika sudah di 'testing', langsung lanjut ke live
-    if (lifeCycleStatus === 'testing') {
-      try {
-        const result = await transitionBroadcast(id, 'live')
-        return NextResponse.json({ ok: true, result, path: 'from_testing' })
-      } catch (err) {
+        console.error(`Direct live transition failed (${lifeCycleStatus} -> live):`, err)
         return NextResponse.json(
-          { error: `Gagal transisi dari testing ke live: ${err.message}` },
-          { status: 400 }
+          { error: err.message || 'Gagal Go Live.' },
+          { status: err.status || 400 }
         )
       }
     }

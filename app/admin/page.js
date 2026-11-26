@@ -410,7 +410,7 @@ function AdminDashboard({ onLogout }) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
+    <main className={`mx-auto px-4 sm:px-6 py-10 transition-all ${tab === 'streaming' ? 'max-w-[1600px]' : 'max-w-4xl'}`}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-semibold">Panel Admin</h1>
