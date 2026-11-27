@@ -1,0 +1,20 @@
+[
+  {
+    "username": "admin",
+    "name": "Admin GMS",
+    "role": "admin",
+    "password": "admin123"
+  },
+  {
+    "username": "operator",
+    "name": "Operator AV",
+    "role": "operator",
+    "password": "operator123"
+  },
+  {
+    "username": "user",
+    "name": "User View Only",
+    "role": "viewer",
+    "password": "view123"
+  }
+]

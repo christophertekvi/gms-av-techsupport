@@ -1,108 +1,178 @@
-import Sidebar from '@/components/Sidebar'
-import ArticleCard from '@/components/ArticleCard'
-import WilayahCard from '@/components/WilayahCard'
-import { getAllArticles } from '@/lib/articles'
-import { CATEGORIES } from '@/lib/categories'
-import { WILAYAH } from '@/lib/locations'
-import { getAllRooms } from '@/lib/rooms'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Loader2, LogOut, Radio } from 'lucide-react'
+import LiveStreamingTab from '@/components/admin/LiveStreamingTab'
 
 export default function HomePage() {
-  const articles = getAllArticles()
-  const rooms = getAllRooms()
+  const [checking, setChecking] = useState(true)
+  const [authed, setAuthed] = useState(false)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    function checkAuth() {
+      fetch('/api/auth', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          setAuthed(!!d.authed)
+          setUser(d.authed ? d.user : null)
+        })
+        .catch(() => {
+          setAuthed(false)
+          setUser(null)
+        })
+        .finally(() => setChecking(false))
+    }
+
+    checkAuth()
+
+    const interval = setInterval(checkAuth, 60 * 1000)
+    window.addEventListener('focus', checkAuth)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', checkAuth)
+    }
+  }, [])
+
+  if (checking) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-24 flex justify-center">
+        <Loader2 className="animate-spin text-muted-light dark:text-muted-dark" size={22} />
+      </main>
+    )
+  }
+
+  return authed ? (
+    <LiveStreamingDashboard
+      user={user}
+      onLogout={() => {
+        setAuthed(false)
+        setUser(null)
+        window.dispatchEvent(new Event('av-auth-change'))
+      }}
+    />
+  ) : (
+    <LoginForm
+      onSuccess={(loggedInUser) => {
+        setAuthed(true)
+        setUser(loggedInUser || null)
+        window.dispatchEvent(new Event('av-auth-change'))
+      }}
+    />
+  )
+}
+
+function LoginForm({ onSuccess }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = await res.json()
+      setLoading(false)
+      if (!res.ok) {
+        setError(data.error || 'Gagal login.')
+        return
+      }
+      onSuccess(data.user)
+    } catch {
+      setLoading(false)
+      setError('Terjadi kesalahan koneksi.')
+    }
+  }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-      <section className="mb-10 max-w-2xl">
-        <h1 className="font-display text-3xl sm:text-4xl font-semibold leading-tight mb-3">
-          Troubleshooting &amp; tutorial peralatan Multimedia GMS.
-        </h1>
-        <p className="text-muted-light dark:text-muted-dark leading-7">
-          Kumpulan solusi untuk masalah kamera, switcher, streaming, audio, dan display
-          yang sering muncul saat produksi live. Tutorial ruangan, dan bagaimana cara mengoperasikan peralatan Multimedia GMS.
-        </p>
-      </section>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        <Sidebar rooms={rooms} />
-        <div className="flex-1 min-w-0 space-y-12">
-          {/* Section: Pilih Wilayah */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark">
-                Pilih Wilayah
-              </h2>
-              <Link
-                href="/wilayah"
-                className="text-xs text-accent font-medium hover:underline inline-flex items-center gap-1"
-              >
-                Lihat semua wilayah <ArrowRight size={13} />
-              </Link>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {WILAYAH.map((loc) => (
-                <WilayahCard key={loc.slug} location={loc} rooms={rooms} />
-              ))}
-            </div>
-          </section>
-
-          {/* Section: Semua Artikel */}
-          <section>
-            {articles.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark">
-                    Semua Artikel ({articles.length})
-                  </h2>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {articles.map((article) => (
-                    <ArticleCard key={article.slug} article={article} />
-                  ))}
-                </div>
-              </>
-            )}
-          </section>
-
-          {/* Section: Jelajahi per Kategori */}
-          <section>
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-light dark:text-muted-dark mb-4">
-              Jelajahi per Kategori
-            </h2>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {CATEGORIES.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={`/kategori/${cat.slug}`}
-                  className="rounded-md border border-border-light dark:border-border-dark p-4 hover:border-accent transition-colors"
-                >
-                  <p className="font-display font-semibold text-sm mb-1">{cat.label}</p>
-                  <p className="text-xs text-muted-light dark:text-muted-dark leading-5">
-                    {cat.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
+    <main className="mx-auto max-w-sm px-4 py-24">
+      <div className="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm">
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-red-600/10 text-red-500 flex items-center justify-center">
+            <Radio size={18} />
+          </div>
+          <h1 className="font-display text-xl font-semibold">Masuk ke Live Manager</h1>
         </div>
+        <p className="text-xs text-muted-light dark:text-muted-dark mb-5">
+          Silakan masuk menggunakan akun tim multimedia untuk mengelola YouTube Live Streaming.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+            autoComplete="username"
+            className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none focus:border-accent"
+            autoFocus
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            autoComplete="current-password"
+            className="w-full rounded-sm border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-sm bg-accent text-white text-sm font-medium py-2 hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 className="animate-spin" size={14} />}
+            Masuk
+          </button>
+        </form>
       </div>
     </main>
   )
 }
 
-function EmptyState() {
+function LiveStreamingDashboard({ user, onLogout }) {
+  async function handleLogout() {
+    await fetch('/api/auth', { method: 'DELETE' })
+    onLogout()
+  }
+
   return (
-    <div className="rounded-md border border-dashed border-border-light dark:border-border-dark p-10 text-center">
-      <p className="font-display font-semibold mb-1">Belum ada artikel</p>
-      <p className="text-sm text-muted-light dark:text-muted-dark mb-4">
-        Tambahkan artikel pertama lewat panel admin untuk mulai mengisi dokumentasi.
-      </p>
-      <Link href="/admin" className="text-accent text-sm underline underline-offset-2">
-        Buka panel admin
-      </Link>
-    </div>
+    <main className="mx-auto max-w-[1600px] px-4 sm:px-6 py-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-border-light dark:border-border-dark">
+        <div>
+          <h1 className="font-display text-2xl font-semibold flex items-center gap-2.5">
+            <Radio size={20} className="text-red-500 animate-pulse" />
+            <span>YouTube Live Streaming Manager</span>
+          </h1>
+          <p className="text-sm text-muted-light dark:text-muted-dark mt-0.5">
+            Kelola jadwal siaran, mulai/hentikan live stream, dan pantau status encoder GMS Multimedia.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {user && (
+            <span className="text-xs text-muted-light dark:text-muted-dark">
+              Masuk sebagai <strong className="text-ink-light dark:text-ink-dark">{user.name || user.username}</strong>
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-border-light dark:border-border-dark text-xs font-medium text-muted-light dark:text-muted-dark hover:text-red-500 hover:border-red-500/40 transition-colors"
+          >
+            <LogOut size={14} /> Keluar
+          </button>
+        </div>
+      </div>
+
+      <LiveStreamingTab />
+    </main>
   )
 }

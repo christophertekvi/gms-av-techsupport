@@ -8,7 +8,7 @@ export default function NotFound() {
       </p>
       <h1 className="font-display text-2xl font-semibold mb-3">Halaman tidak ditemukan</h1>
       <p className="text-muted-light dark:text-muted-dark mb-6">
-        Artikel atau kategori yang kamu cari mungkin sudah dipindah atau belum dibuat.
+        Halaman yang kamu cari tidak ditemukan atau sudah dipindah.
       </p>
       <Link href="/" className="text-accent underline underline-offset-2 text-sm">
         Kembali ke beranda

@@ -12,9 +12,9 @@ const body = Inter({ subsets: ['latin'], variable: '--font-body' })
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata = {
-  title: 'GMS Multimedia',
+  title: 'GMS Multimedia — YouTube Live Manager',
   description:
-    'Dokumentasi & panduan untuk Tim Multimedia & Produksi AV GMS',
+    'Panel manajemen YouTube Live Streaming untuk Tim Multimedia GMS',
   icons: {
     icon: '/icon.png',
   },
@@ -41,11 +41,11 @@ export default function RootLayout({ children }) {
         <Navbar />
         {children}
         <footer className="border-t border-border-light dark:border-border-dark mt-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mx-auto max-w-[1600px] px-4 sm:px-6 py-6 text-xs text-muted-light dark:text-muted-dark flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span>GMS Multimedia — Dokumentasi Internal Tim Multimedia</span>
+              <span>GMS Multimedia — YouTube Live Streaming Manager</span>
               <span className="font-mono px-1.5 py-0.5 rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-[10px]">
-                v1.0
+                v2.0
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs">
@@ -55,10 +55,6 @@ export default function RootLayout({ children }) {
               <span>•</span>
               <Link href="/terms" className="hover:text-accent transition-colors">
                 Ketentuan Layanan
-              </Link>
-              <span>•</span>
-              <Link href="/admin" className="hover:text-accent transition-colors">
-                Admin
               </Link>
             </div>
           </div>

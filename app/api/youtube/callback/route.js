@@ -12,24 +12,24 @@ export async function GET(req) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/admin?tab=streaming&error=${encodeURIComponent(error)}`, req.url)
+      new URL(`/?error=${encodeURIComponent(error)}`, req.url)
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL('/admin?tab=streaming&error=Tidak%20ada%20authorization%20code', req.url)
+      new URL('/?error=Tidak%20ada%20authorization%20code', req.url)
     )
   }
 
   try {
     await exchangeCode(code, redirectUri)
-    return NextResponse.redirect(new URL('/admin?tab=streaming&connected=1', req.url))
+    return NextResponse.redirect(new URL('/?connected=1', req.url))
   } catch (err) {
     console.error('Gagal exchange OAuth code:', err)
     return NextResponse.redirect(
       new URL(
-        `/admin?tab=streaming&error=${encodeURIComponent(err.message || 'Gagal autentikasi YouTube')}`,
+        `/?error=${encodeURIComponent(err.message || 'Gagal autentikasi YouTube')}`,
         req.url
       )
     )

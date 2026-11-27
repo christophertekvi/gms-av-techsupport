@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { isAuthed } from '@/lib/auth'
 import { transitionBroadcast, youtubeFetch } from '@/lib/youtube'
-
-async function isAuthed() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('av_admin_session')?.value
-  return !!token && token === process.env.ADMIN_PASSWORD
-}
 
 /** Ambil lifecycle status broadcast langsung dari YouTube (fresh) */
 async function fetchBroadcastLifecycle(broadcastId) {
