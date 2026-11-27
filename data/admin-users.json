@@ -15,6 +15,6 @@
     "username": "user",
     "name": "User View Only",
     "role": "viewer",
-    "password": "view123"
+    "password": "user123"
   }
 ]
