@@ -600,15 +600,6 @@ export default function LiveStreamingTab() {
                           </button>
                         )}
 
-                        <button
-                          type="button"
-                          onClick={() => setSelectedBroadcast(b)}
-                          className="w-full px-3 py-1.5 rounded-sm bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/30 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
-                        >
-                          <Activity size={13} />
-                          <span>Studio Matrix</span>
-                        </button>
-
                         <div className="grid grid-cols-2 gap-1.5">
                           <button
                             type="button"
